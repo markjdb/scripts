@@ -1,0 +1,7 @@
+#!/bin/sh
+
+ifconfig wlan0 up
+iwconfig wlan0 channel auto
+wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -B
+sleep 1
+dhcpcd wlan0

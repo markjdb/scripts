@@ -1,0 +1,5 @@
+#!/bin/sh
+
+for file in $(find . -name '*.orig' -o -name '*.rej'); do
+	[ -f "${file%.orig}" -o -f "${file%.rej}" ] && rm -f "$file"
+done

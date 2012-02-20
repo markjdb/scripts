@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+echo "password is anoncvs"
+cvs -d:pserver:anonymous@creme-brulee.marcuscom.com:/space/cvs/marcuscom-cvs login
+cvs -z3 -d:pserver:anonymous@creme-brulee.marcuscom.com:/space/cvs/marcuscom-cvs co portstools
+mv portstools/tinderbox tinderbox && rm -rf portstools
