@@ -1,5 +1,12 @@
 #!/bin/sh
 
+case $(uname) in
+FreeBSD)
+    echo "This script doesn't work on FreeBSD yet."
+    exit 1
+    ;;
+esac
+
 ifconfig wlan0 up
 iwconfig wlan0 channel auto
 wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -B
