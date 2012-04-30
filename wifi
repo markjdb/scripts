@@ -2,13 +2,22 @@
 
 case $(uname) in
 FreeBSD)
-    echo "This script doesn't work on FreeBSD yet."
-    exit 1
+    ifconfig wlan create wlandev iwn0
+    ;;
+Linux)
+    ifconfig wlan0 up
+    iwconfig wlan0 channel auto
     ;;
 esac
 
-ifconfig wlan0 up
-iwconfig wlan0 channel auto
 wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -B
 sleep 1
-dhcpcd wlan0
+
+case $(uname) in
+FreeBSD)
+    dhclient wlan0
+    ;;
+Linux)
+    dhcpcd wlan0
+    ;;
+esac
