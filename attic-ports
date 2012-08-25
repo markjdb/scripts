@@ -1,0 +1,14 @@
+#!/bin/sh
+
+usage()
+{
+    echo >&2 "usage: $(basename $0) <date> <port>"
+    echo >&2 "  e.g. $(basename $0) 20110326 shells/bash3"
+    exit 1
+}
+
+[ $# -eq 2 ] || usage
+
+unset CVSROOT CVS_RSH
+cvs -d anoncvs@anoncvs.tw.FreeBSD.org:/home/ncvs co -D $1 ports/$2
+find ports/ -name CVS -a -type d | xargs rm -rf
