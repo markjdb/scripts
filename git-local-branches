@@ -1,0 +1,54 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 << __EOF__
+Usage: $(basename $0) <repo>
+
+Options:
+  repo      -- Location of the target git repository.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -d)
+        shift; repodir="$1"
+        ;;
+    -h)
+        usage 0
+        ;;
+    *)
+        usage 1
+        ;;
+    esac
+    shift
+done
+
+[ $# -eq 0 ] || usage
+[ -n "$repodir" ] || usage
+
+cd "$repodir"
+
+if ! git status >/dev/null 2>&1; then
+    log "'$repodir' isn't a git repository"
+    exit 1
+fi
+
+for branch in $(git branch --remotes | grep -v HEAD); do
+    localname=${branch##*/}
+    if [ -z "$(git branch --list $localname)" ]; then
+        errmsg=$(git branch --track "$localname" "$branch" 2>&1 >/dev/null)
+        [ $? -ne 0 ] && log "failed to create '$localname': $errmsg"
+    else
+        log "local branch '$localname' already exists; skipping"
+    fi
+done
+
+exit 0
