@@ -2,7 +2,12 @@
 
 case $(uname) in
 FreeBSD)
-    ifconfig wlan0 >/dev/null 2>&1 || ifconfig wlan create wlandev iwn0
+    if ifconfig iwn0 >/dev/null 2>&1; then
+        interf=iwn0
+    elif ifconfig run0 >/dev/null 2>&1; then
+        interf=run0
+    fi
+    ifconfig wlan0 >/dev/null 2>&1 || ifconfig wlan create wlandev $interf
     ;;
 Linux)
     ifconfig wlan0 up
