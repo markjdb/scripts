@@ -1,5 +1,3 @@
-#!/bin/sh
-
 setdb()
 {
 	[ $# -ne 1 ] && echo "usage: setdb < db-name >" && return 1
