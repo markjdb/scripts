@@ -1,0 +1,104 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) [ -j numjobs ] [ album-dir ]
+
+Options:
+  -j numjobs    -- Maximum number of conversion processes that will be run
+                   concurrently. Must be 1 or larger.
+  album-dir     -- Name of the target directory. Defaults to
+                   ${HOME}/media/music/albums.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+trap 'log "cleaning up.."; wait ; exit 0' 2
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -h)
+        usage 0
+        ;;
+    -j)
+        shift; jobs="$1";
+        ;;
+    *)
+        break
+        ;;
+    esac
+    shift
+done
+
+: ${jobs=$(sysctl -n hw.ncpu)}
+
+if [ $# -eq 1 ]; then
+    albumdir="$1"
+elif [ $# -eq 0 ]; then
+    albumdir=${HOME}/media/music/albums
+else
+    usage
+fi
+
+[ ${#jobs} -gt 0 -a $(expr "$jobs" : [1-9][0-9]*) -eq ${#jobs} ] || usage
+
+cd "$albumdir"
+count=$(find . -name '*.flac' | wc -l | awk '{print $1}')
+nproc=0
+n=0
+
+for file in $(find . -name '*.flac'); do
+    basefile=$(basename ${file%.flac})
+    basedir=${file%/flac/*.flac}
+    n=$((n + 1))
+
+    # Check to see if a converted version already exists.
+    if [ -f ${basedir}/ogg/${basefile}.ogg -o -f ${basedir}/flac/${basefile}.ogg ]; then
+        log "($n of $count) skipping $file"
+        continue
+    fi
+
+    log "($n of $count) converting $file"
+    oggenc -b 160 $file >/dev/null 2>&1 &
+    pid=$! # PID of oggenc
+
+    pidq="$pidq $pid"
+    nproc=$((nproc + 1))
+
+    while [ $nproc -ge $jobs ]; do
+        sleep 1
+
+        unset tpidq
+        for pid in ${pidq}; do
+           if [ -d /proc/$pid -a "$(ps -o ppid $pid 2>/dev/null | sed 1d)" = $$ ] ; then
+               tpidq="$tpidq $pid"
+           else
+               # The oggenc run finished, so remove the PID.
+               nproc=$((nproc - 1))
+           fi
+        done
+        pidq="$tpidq"
+    done
+done
+
+for file in $(find . -name '*.flac'); do
+    basefile=$(basename ${file%.flac})
+    basedir=${file%/flac/*.flac}
+
+    if [ ! -d ${basedir}/ogg ]; then
+        log "${basedir}/ogg doesn't exist - creating"
+        mkdir ${basedir}/ogg
+    fi
+
+    if [ -f ${basedir}/flac/${basefile}.ogg ]; then
+        mv -f ${basedir}/flac/${basefile}.ogg ${basedir}/ogg/${basefile}.ogg
+    fi
+done
+
+exit 0
