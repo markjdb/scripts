@@ -18,22 +18,20 @@ log()
 
 while [ $# -gt 0 ]; do
     case "$1" in
-    -d)
-        shift; repodir="$1"
-        ;;
     -h)
         usage 0
         ;;
     *)
-        usage 1
+        break
         ;;
     esac
     shift
 done
 
-[ $# -eq 0 ] || usage
-[ -n "$repodir" ] || usage
+[ $# -eq 1 ] || usage
 
+repodir="$1"
+[ -d "$repodir" ] || usage
 cd "$repodir"
 
 if ! git status >/dev/null 2>&1; then
