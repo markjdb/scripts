@@ -2,7 +2,7 @@
 
 case $(uname) in
 FreeBSD)
-    ifconfig wlan create wlandev iwn0
+    ifconfig wlan0 >/dev/null 2>&1 || ifconfig wlan create wlandev iwn0
     ;;
 Linux)
     ifconfig wlan0 up
@@ -10,6 +10,7 @@ Linux)
     ;;
 esac
 
+sleep 1
 wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -B
 sleep 1
 
