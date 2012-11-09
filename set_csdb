@@ -29,6 +29,7 @@ regendb()
     fi
 
     for DB in $(eval $dirs); do
+        echo "Regenerating cscope database for '$DB'" 1>&2
         if [ ! -d "${DB_DIR}/${DB}" ]; then
             echo "regendb: unknown src tree '$DB'" 1>&2
             return 1
