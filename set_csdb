@@ -1,3 +1,9 @@
+listdb()
+{
+    [ $# -ne 0 ] && echo "Usage: listdb" 1>&2 && return 1
+    ls -1 ${HOME}/src/cscope
+}
+
 setdb()
 {
     [ $# -ne 1 ] && echo "Usage: setdb < db-name >" 1>&2 && return 1
