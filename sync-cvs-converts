@@ -1,0 +1,30 @@
+#!/bin/sh
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+PATH=$PATH:/usr/local/bin
+export CVS_RSH=ssh
+
+for dir in $(find ${HOME}/src/cvs-converts -depth 1 -type d); do
+    log "syncing '$dir'"
+    cd $dir
+
+    case ${dir##*/} in
+    netbsd-syslogd)
+        CVSROOT="anoncvs@anoncvs.netbsd.org:/cvsroot"
+        git cvsimport -v -d $CVSROOT src/usr.sbin/syslogd
+        git push --all origin
+        ;;
+    marcuscom-tinderbox)
+        CVSROOT=":pserver:anonymous@creme-brulee.marcuscom.com:/space/cvs/marcuscom-cvs"
+        git cvsimport -v -d "$CVSROOT" portstools/tinderbox
+        git push --all origin
+        ;;
+    *)
+        log "unhandled dir '$dir'"
+        ;;
+    esac
+done
