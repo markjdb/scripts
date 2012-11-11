@@ -1,48 +1,50 @@
+listdb()
+{
+    [ $# -ne 0 ] && echo "Usage: listdb" 1>&2 && return 1
+    ls -1 ${HOME}/src/cscope
+}
+
 setdb()
 {
     [ $# -ne 1 ] && echo "Usage: setdb < db-name >" 1>&2 && return 1
 
-    local _DB_DIR _DB
+    local DB_DIR DB
 
-    _DB_DIR=${HOME}/src/cscope
+    DB_DIR=${HOME}/src/cscope
 
-    for _DB in $(ls ${_DB_DIR}); do
-        if [ "$_DB" = "$1" ]; then
-            export CSCOPE_DB=${_DB_DIR}/${1}
+    for DB in $(ls ${DB_DIR}); do
+        if [ "$DB" = "$1" ]; then
+            export CSCOPE_DB=${DB_DIR}/${1}
             return 0
         fi
     done
 
-    echo "setdb: unknown src tree"
+    echo "setdb: unknown src tree" 1>&2
     return 1
 }
 
 regendb()
 {
-    [ $# -gt 1 ] && echo "Usage: regendb [ db-name ]" 1>&2 && return 1
+    local DB_DIR DB dirs
 
-    local _DB_DIR _DB
-
-    _DB_DIR=${HOME}/src/cscope
-
+    DB_DIR=${HOME}/src/cscope
     if [ $# -eq 0 ]; then
-        for _DB in $(ls ${_DB_DIR}); do
-            $(cd ${_DB_DIR}/${_DB} && ./csdbgen.sh && \
-              cscope -b -q -k)
-            return 0
-        done
+        dirs="ls $DB_DIR"
     else
-        for _DB in $(ls ${_DB_DIR}); do
-            if [ "$_DB" = "$1" ]; then
-                $(cd ${_DB_DIR}/${1} && ./csdbgen.sh && \
-                  cscope -b -q -k)
-                return 0
-            fi
-        done
+        dirs="echo $@"
     fi
 
-    echo "setdb: unknown src tree"
-    return 1
+    for DB in $(eval $dirs); do
+        echo "Regenerating cscope database for '$DB'" 1>&2
+        if [ ! -d "${DB_DIR}/${DB}" ]; then
+            echo "regendb: unknown src tree '$DB'" 1>&2
+            return 1
+        fi
+        $(cd ${DB_DIR}/${DB} && truncate -s 0 cscope.files && \
+          ./csdbgen.sh && cscope -b -q -k)
+    done
+
+    return 0
 }
 
 unsetdb()

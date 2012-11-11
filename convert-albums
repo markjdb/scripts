@@ -23,11 +23,11 @@ trap 'log "cleaning up.."; wait ; exit 0' 2
 
 while [ $# -gt 0 ]; do
     case "$1" in
-    -h)
+    -h|--help)
         usage 0
         ;;
     -j)
-        shift; jobs="$1";
+        shift; jobs="$1"; shift
         ;;
     *)
         break
@@ -78,7 +78,7 @@ for file in $(find . -name '*.flac'); do
         for pid in ${pidq}; do
             piddir=/proc/$pid
             status=${piddir}/status
-            if [ -d $piddir -a -r $status -a $(awk '{print $3}' $status) -eq $$ ]; then
+            if [ -d $piddir -a -r $status -a "$(awk '{print $3}' $status 2>/dev/null)" = $$ ]; then
                 tpidq="$tpidq $pid"
             else
                 # The oggenc run finished, so remove the PID.
