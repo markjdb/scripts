@@ -1,0 +1,75 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) -U list_url -s start_year [ -m start_month ]
+
+Options:
+  -U list_url     -- The URL of the directory containing the ML archives.
+
+  -s start_year   -- Year at which to start downloading ML archives.
+
+  -m start_month  -- Month at which to start downloading ML archives. Must
+                     be specified by name, e.g. "November."
+__EOF__
+  exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" 1>&2
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -h|--help)
+        usage 0
+        ;;
+    -m)
+        shift; STARTMONTH="$1"
+        ;;
+    -s)
+        shift; STARTYEAR="$1"
+        ;;
+    -U)
+        shift; URL="$1"
+        ;;
+    *)
+        usage
+        ;;
+    esac
+    shift
+done
+
+if [ -z "$URL" ] || [ -z "$STARTYEAR" ]; then
+    echo wee $URL
+    usage
+elif ! expr "$STARTYEAR" : '[1-9][0-9]*' >/dev/null 2>&1; then
+    log "invalid year '$STARTYEAR'"
+    usage
+fi
+
+MONTHS="January
+        February
+        March
+        April
+        May
+        June
+        July
+        August
+        September
+        October
+        November
+        December"
+
+YEAR=$STARTYEAR
+while [ $YEAR -le $(date '+%Y') ]; do
+    for MONTH in $MONTHS; do
+        [ $YEAR -eq $STARTYEAR -a -n "$(echo $MONTHS | grep ${MONTH}.*${STARTMONTH})" ] && continue
+        fetch "${URL}/${YEAR}-${MONTH}.txt.gz"
+        [ $? -eq 0 ] && gunzip ${YEAR}-${MONTH}.txt.gz
+        [ $YEAR -eq $(date '+%Y') -a $MONTH = $(date '+%B') ] && break
+    done
+    YEAR=$((YEAR + 1))
+done
