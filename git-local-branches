@@ -3,7 +3,7 @@
 usage()
 {
     cat >&2 << __EOF__
-Usage: $(basename $0) <repo>
+Usage: $(basename $0) repo
 
 Options:
   repo      -- Location of the target git repository.

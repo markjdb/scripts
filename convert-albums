@@ -27,7 +27,7 @@ while [ $# -gt 0 ]; do
         usage 0
         ;;
     -j)
-        shift; jobs="$1"; shift
+        shift; jobs="$1"
         ;;
     *)
         break
