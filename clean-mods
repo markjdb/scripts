@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ "$(basename $PWD)" != modules ]; then
+    echo "$(basename $0): this is probably being run from the wrong directory"
+    exit 1
+fi
+
+find . -name x86 -o -name machine -o -name .depend -o -name @ | xargs rm
