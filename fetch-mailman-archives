@@ -43,7 +43,6 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$URL" ] || [ -z "$STARTYEAR" ]; then
-    echo wee $URL
     usage
 elif ! expr "$STARTYEAR" : '[1-9][0-9]*' >/dev/null 2>&1; then
     log "invalid year '$STARTYEAR'"
