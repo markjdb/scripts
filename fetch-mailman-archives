@@ -65,7 +65,8 @@ MONTHS="January
 YEAR=$STARTYEAR
 while [ $YEAR -le $(date '+%Y') ]; do
     for MONTH in $MONTHS; do
-        [ $YEAR -eq $STARTYEAR -a -n "$(echo $MONTHS | grep ${MONTH}.*${STARTMONTH})" ] && continue
+        [ $YEAR -eq $STARTYEAR -a -n "$STARTMONTH" \
+            -a -n "$(echo $MONTHS | grep ${MONTH}.*${STARTMONTH})" ] && continue
         fetch "${URL}/${YEAR}-${MONTH}.txt.gz"
         [ $? -eq 0 ] && gunzip ${YEAR}-${MONTH}.txt.gz
         [ $YEAR -eq $(date '+%Y') -a $MONTH = $(date '+%B') ] && break
