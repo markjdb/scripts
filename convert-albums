@@ -49,6 +49,9 @@ fi
 if ! which -s oggenc; then
     log "oggenc isn't installed, exiting"
     exit 1
+elif [ -z "$(ls /proc)" ]; then
+    log "procfs isn't mounted, exiting"
+    exit 1
 fi
 
 [ ${#jobs} -gt 0 -a $(expr "$jobs" : [1-9][0-9]*) -eq ${#jobs} ] || usage
