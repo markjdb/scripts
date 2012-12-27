@@ -1,0 +1,62 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) [ -m mount-dir ] [ album-dir ]
+
+Options:
+  -m mount-dir    -- iPod mount point. Must be an absolute path.
+                     Defaults to ${HOME}/mnt/ipod.
+  album-dir       -- Name of the album directory. Defaults to
+                     ${HOME}/media/music/albums.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -h|--help)
+        usage 0
+        ;;
+    -m)
+        shift; mntdir="$1"
+        if ! expr "$mntdir" : / >/dev/null 2>&1; then
+            log "mount-dir must be an absolute path"; echo
+            usage
+        fi
+        ;;
+    *)
+        break
+        ;;
+    esac
+    shift
+done
+
+: ${mntdir=${HOME}/mnt/ipod}
+
+if [ $# -eq 1 ]; then
+    albumdir="$1"
+elif [ $# -eq 0 ]; then
+    albumsdir=${HOME}/media/music/albums
+else
+    usage
+fi
+
+cd "$albumsdir"
+
+for audfile in $(find . -name '*.mp3' -o -name '*.ogg'); do
+    dir=$(dirname "$audfile")
+    file=$(basename "$audfile")
+    mkdir -p "$mntdir/$dir"
+
+    if [ ! -f "$mntdir/$audfile" ] || ! cmp -s "$mntdir/$audfile" "$audfile"; then
+        log "copying $audfile to iPod"
+        cp "$audfile" "$mntdir/$dir"
+    fi
+done
