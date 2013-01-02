@@ -7,7 +7,8 @@ Usage: $(basename $0) [ -j numjobs ] [ album-dir ]
 
 Options:
   -j numjobs    -- Maximum number of conversion processes that will be run
-                   concurrently. Must be 1 or larger.
+                   concurrently. Must be 1 or larger. Defaults to the number
+                   of CPUs installed.
   album-dir     -- Name of the target directory. Defaults to
                    ${HOME}/media/music/albums.
 __EOF__
