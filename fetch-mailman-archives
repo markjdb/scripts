@@ -3,15 +3,19 @@
 usage()
 {
     cat >&2 <<__EOF__
-Usage: $(basename $0) -U list_url -s start_year [ -m start_month ]
+Usage: $(basename $0) -U list_url -s start_year [ -m start_month ] [ -x extension ]
 
 Options:
-  -U list_url     -- The URL of the directory containing the ML archives.
-
   -s start_year   -- Year at which to start downloading ML archives.
 
   -m start_month  -- Month at which to start downloading ML archives. Must
                      be specified by name, e.g. "November."
+
+  -U list_url     -- The URL of the directory containing the ML archives.
+
+  -x extension    -- An optional extension to add to each archive file,
+                     e.g. "gz"
+
 __EOF__
   exit ${1-1}
 }
@@ -34,6 +38,9 @@ while [ $# -gt 0 ]; do
         ;;
     -U)
         shift; URL="$1"
+        ;;
+    -x)
+        shift; EXT=".$1"
         ;;
     *)
         usage
@@ -67,8 +74,13 @@ while [ $YEAR -le $(date '+%Y') ]; do
     for MONTH in $MONTHS; do
         [ $YEAR -eq $STARTYEAR -a -n "$STARTMONTH" \
             -a -n "$(echo $MONTHS | grep ${MONTH}.*${STARTMONTH})" ] && continue
-        fetch "${URL}/${YEAR}-${MONTH}.txt.gz"
-        [ $? -eq 0 ] && gunzip ${YEAR}-${MONTH}.txt.gz
+        fetch "${URL}/${YEAR}-${MONTH}.txt${EXT}"
+        [ $? -eq 0 ] || continue
+        case "$EXT" in
+        .gz)
+            gunzip ${YEAR}-${MONTH}.txt.gz
+            ;;
+        esac
         [ $YEAR -eq $(date '+%Y') -a $MONTH = $(date '+%B') ] && break
     done
     YEAR=$((YEAR + 1))
