@@ -26,7 +26,7 @@ log()
 }
 
 while [ $# -gt 0 ]; do
-    case "$1" in
+    case $1 in
     -h|--help)
         usage 0
         ;;
@@ -76,7 +76,7 @@ while [ $YEAR -le $(date '+%Y') ]; do
             -a -n "$(echo $MONTHS | grep ${MONTH}.*${STARTMONTH})" ] && continue
         fetch "${URL}/${YEAR}-${MONTH}.txt${EXT}"
         [ $? -eq 0 ] || continue
-        case "$EXT" in
+        case $EXT in
         .gz)
             gunzip ${YEAR}-${MONTH}.txt.gz
             ;;
