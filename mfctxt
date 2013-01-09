@@ -1,0 +1,90 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) [ -o outfile ] revision1 [ revision2 ] ...
+
+Options:
+  -o outfile       -- The file to which the MFC commit message should be
+                      written. Defaults to ./mfc.txt.
+  revision         -- A Subversion commit revision number corresponding to
+                      a commit in HEAD. At least one revision must be
+                      specified.
+Environment variables:
+  SVNSRCBASE       -- Root of a checkout of the FreeBSD Subversion repository.
+                      Defaults to \${HOME}/src/freebsd-svn.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+REVS=
+SVNSRCBASE=${SVNSRCBASE-${HOME}/src/freebsd-svn}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -h|--help)
+        usage 0
+        ;;
+    -o)
+        shift; OUTF="$1"
+        ;;
+    *)
+        REVS="$REVS $1"
+        ;;
+    esac
+    shift
+done
+
+OUTF=${OUTF-mfc.txt}
+
+if [ -z "$REVS" ]; then
+    usage
+elif ! which svn >/dev/null 2>&1; then
+    log "Subversion isn't installed. Exiting."
+    exit 1
+elif [ -f "$OUTF" ] && ! [ -w "$OUTF" ]; then
+    log "Outfile '$OUTF' exists and isn't writable. Exiting."
+    exit 1
+elif ! svn status "$SVNSRCBASE/head" >/dev/null 2>&1; then
+    log "Failed to access the FreeBSD Subversion repository. Exiting."
+    exit 1
+fi
+
+if [ -f "$OUTF" ]; then
+    backup=$(mktemp -t $(basename $0))
+    log "Warning: outfile '$OUTF' already exists. Backing it up to ${backup}."
+    cp -f "$OUTF" $backup
+    truncate -s 0 "$OUTF"
+fi
+
+for rev in $REVS; do
+    logf=$(mktemp -t $(basename $0))
+    svn log -r $rev "$SVNSRCBASE/head" > $logf 2>/dev/null
+    if [ $? -ne 0 ]; then
+        log "Warning: couldn't fetch log for revision '$rev', skipping."
+        rm -f $logf
+        continue
+    elif [ "$(wc -l $logf | awk '{print $1}')" = 1 ]; then
+        log "Warning: it looks like revision '$rev' belongs to another branch, skipping."
+        rm -f $logf
+        continue
+    fi
+
+    echo "MFC $rev:" >> "$OUTF"
+    cat $logf | sed -e 1,3d -e '$d' -e '/^Approved by:/d' \
+                                    -e '/^MFC after:/d' \
+                                    -e '/^PR:/d' \
+                                    -e '/^Reviewed by:/d' \
+                                    -e '/^Sponsored by:/d' \
+                                    -e '/^Submitted by:/d' \
+                                    -e 's/^/  /' >> "$OUTF"
+    rm -f $logf
+done
+
+sed -i '' '$d' "$OUTF"
