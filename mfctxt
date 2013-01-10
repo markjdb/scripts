@@ -35,7 +35,11 @@ while [ $# -gt 0 ]; do
         shift; OUTF="$1"
         ;;
     *)
-        REVS="$REVS $1"
+        if [ -z "$REVS" ]; then
+            REVS="$1"
+        else
+            REVS="$REVS $1"
+        fi
         ;;
     esac
     shift
@@ -63,6 +67,19 @@ if [ -f "$OUTF" ]; then
     truncate -s 0 "$OUTF"
 fi
 
+TMPREVS=
+for rev in $REVS; do
+    if ! expr $rev : r >/dev/null 2>&1; then
+        TMPREVS="$TMPREVS r${rev}"
+    else
+        TMPREVS="$TMPREVS $rev"
+    fi
+done
+REVS=$TMPREVS
+
+echo "MFC ${REVS}." >> "$OUTF"
+echo >> "$OUTF"
+
 for rev in $REVS; do
     logf=$(mktemp -t $(basename $0))
     svn log -r $rev "$SVNSRCBASE/head" > $logf 2>/dev/null
@@ -83,7 +100,7 @@ for rev in $REVS; do
                                     -e '/^Reviewed by:/d' \
                                     -e '/^Sponsored by:/d' \
                                     -e '/^Submitted by:/d' \
-                                    -e 's/^/  /' >> "$OUTF"
+                                    -e 's/^\([^$]\)/  \1/' >> "$OUTF"
     rm -f $logf
 done
 
