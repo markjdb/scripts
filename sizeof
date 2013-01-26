@@ -1,0 +1,74 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) < type1 > < type2 > ...
+
+Options:
+  type          -- The name of a C type, e.g. size_t.
+__EOF__
+
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+if which clang >/dev/null 2>&1; then
+    CC=clang
+else
+    CC=gcc
+fi
+
+trap 'rm -f $CFILE $OFILE; exit 0' 2 EXIT
+
+CFILE=$(mktemp -t $(basename $0))
+OFILE=$(mktemp -t $(basename $0))
+if [ -z "$CFILE" -o -z "$OFILE" ]; then
+    log "couldn't create temp file"
+    exit 1
+fi
+
+# XXX try to dynamically figure out where the defn/typedef for the type is
+# by searching through headers in /usr/include and /usr/local/include
+cat >> $CFILE <<__EOF__
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+int
+main(int argc, char **argv)
+{
+
+__EOF__
+
+while [ $# -gt 0 ]; do
+    printf '\tprintf("%s: %%zd\\n", sizeof(%s));\n' "$1" "$1" >> $CFILE
+    shift
+done
+
+cat >> $CFILE <<__EOF__
+        return (0);
+}
+__EOF__
+
+if ! $CC -x c -o $OFILE $CFILE; then
+    log "failed to compile test program $CFILE:"
+    echo '--'
+    cat $CFILE | sed 's/^/  /'
+    echo '--'
+    exit 1
+fi
+
+$OFILE
