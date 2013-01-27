@@ -62,6 +62,10 @@ fi
 
 if [ -f "$OUTF" ]; then
     backup=$(mktemp -t $(basename $0))
+    if [ -z "$backup" ]; then
+        log "Failed to create temporary file. Exiting."
+        exit 1
+    fi
     log "Warning: outfile '$OUTF' already exists. Backing it up to ${backup}."
     cp -f "$OUTF" $backup
     truncate -s 0 "$OUTF"
@@ -82,6 +86,11 @@ echo >> "$OUTF"
 
 for rev in $REVS; do
     logf=$(mktemp -t $(basename $0))
+    if [ -z "$logf" ]; then
+        log "Failed to create a temporary file. Exiting."
+        rm -f "$OUTF"
+        exit 1
+    fi
     svn log -r $rev "$SVNSRCBASE/head" > $logf 2>/dev/null
     if [ $? -ne 0 ]; then
         log "Warning: couldn't fetch log for revision '$rev', skipping."

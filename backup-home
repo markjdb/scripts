@@ -25,13 +25,13 @@ if [ $# -ne 1 ]; then
 fi
 DSTDIR="$1"
 if [ ! -d "$DSTDIR" ]; then
-    log "backup-dir must be an existing directory"
+    log "backup-dir must be an existing directory. Exiting."
     exit 1
 fi
 
 EXCLUDES=$(mktemp -t $(basename $0))
 if [ -z "$EXCLUDES" ]; then
-    log "couldn't create excludes file"
+    log "Failed to create temporary file. Exiting."
     exit 1
 fi
 
