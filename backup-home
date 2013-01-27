@@ -1,0 +1,46 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) <backup-dir>
+
+Options:
+  backup-dir     -- Name of the backup directory, e.g. /mnt/laptop.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+export PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+
+trap 'rm -f $EXCLUDES; exit 0' 2 EXIT
+
+if [ $# -ne 1 ]; then
+    usage
+fi
+DSTDIR="$1"
+if [ ! -d "$DSTDIR" ]; then
+    log "backup-dir must be an existing directory"
+    exit 1
+fi
+
+EXCLUDES=$(mktemp -t $(basename $0))
+if [ -z "$EXCLUDES" ]; then
+    log "couldn't create excludes file"
+    exit 1
+fi
+
+cat <<__EOF__ > $EXCLUDES
+mark/dl
+mark/mnt
+mark/sent
+mark/tmp
+mark/.*
+__EOF__
+
+rsync -av --exclude-from=$EXCLUDES $HOME "$DSTDIR"
