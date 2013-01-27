@@ -81,8 +81,10 @@ for rev in $REVS; do
 done
 REVS=$TMPREVS
 
-echo "MFC ${REVS}." >> "$OUTF"
-echo >> "$OUTF"
+if [ $(echo $REVS | awk '{print NF}') -gt 1 ]; then
+    echo "MFC ${REVS# *}." >> "$OUTF"
+    echo >> "$OUTF"
+fi
 
 for rev in $REVS; do
     logf=$(mktemp -t $(basename $0))
