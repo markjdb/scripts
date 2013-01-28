@@ -20,7 +20,7 @@ for dir in $(find ${HOME}/src/cvs-converts -depth 1 -type d); do
         ;;
     marcuscom-tinderbox)
         CVSROOT=":pserver:anonymous@creme-brulee.marcuscom.com:/space/cvs/marcuscom-cvs"
-        git cvsimport -v -d "$CVSROOT" portstools/tinderbox
+        git cvsimport -v -d $CVSROOT portstools/tinderbox
         git push --all origin
         ;;
     *)
