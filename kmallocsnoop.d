@@ -2,15 +2,17 @@
 
 #pragma D option quiet
 
+#pragma D option bufsize=16m
+
 dtrace:::BEGIN
 {
 	printf("Tracing. Hit Ctrl-C to quit.\n");
 
-	printf("%-14s ", "TIMESTAMP");
+	printf("%-20s ", "TIMESTAMP");
 	printf("%-8s  ", "TYPE");
 	printf("%-10s ", "SIZE");
-	printf("%-30s ", "DESCRIPTION");
-	printf("%-16s ", "ADDRESS");
+	printf("%-15s ", "DESCRIPTION");
+	printf("%-18s ", "ADDRESS");
 	printf("\n");
 }
 
@@ -22,11 +24,11 @@ fbt::malloc:entry
 
 fbt::malloc:return
 {
-	printf("%-14d ",  walltimestamp);
+	printf("%-20d ",  walltimestamp);
 	printf("%-8s  ",  "ALLOC");
 	printf("%-10lu ", self->size);
-	printf("%-30s ",  stringof(self->type->ks_shortdesc));
-	printf("%-16p ",  args[1]);
+	printf("%-15s ",  stringof(self->type->ks_shortdesc));
+	printf("0x%-16p ",  args[1]);
 	printf("\n");
 }
 
@@ -35,10 +37,10 @@ fbt::free:entry
 {
 	mtype = (struct malloc_type *)args[1];
 
-	printf("%-14d ",  walltimestamp);
+	printf("%-20d ",  walltimestamp);
 	printf("%-8s  ",  "FREE");
 	printf("%-10s ",  "-");
-	printf("%-30s ",  stringof(mtype->ks_shortdesc));
-	printf("%-16p ",  args[0]);
+	printf("%-15s ",  stringof(mtype->ks_shortdesc));
+	printf("0x%-16p ",  args[0]);
 	printf("\n");
 }
