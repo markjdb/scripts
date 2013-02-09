@@ -1,8 +1,5 @@
 #!/bin/sh
 
-domain=$(hostname)
-domain=${domain#*.}
-
 usage()
 {
     cat <<__EOF__
@@ -10,7 +7,7 @@ Usage: $(basename $0) [ -u username ]
 
 Options:
   -u username           - Send mail to the specified user instead of
-                          $${USER}@$domain
+                          \${USER}@$domain
 __EOF__
 
     exit ${1-1}
@@ -26,13 +23,31 @@ pktcount()
     netstat -s -p tcp | grep 'control packets' | awk '{print $1}'
 }
 
-if [ $# -eq 0 ]; then
-    mailto=${USER}@$domain
-elif [ $# -eq 2 ]; then
-    mailto="$2"@$domain
-else
-    usage
-fi
+domain=$(hostname)
+domain=${domain#*.}
+[ "$domain" = $(hostname -s) ] && domain=
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -h|--help)
+        usage 0
+        ;;
+    -u)
+        shift
+        if [ -z "$1" ]; then
+            log "username must be a non-empty string"
+            usage
+        fi
+
+        mailto="$1"@$domain
+        ;;
+    *)
+        usage
+        ;;
+    esac
+done
+
+: ${mailto=${USER}@${domain}}
 
 if [ -n "$domain" ]; then
     log "sending notification mail to $mailto"
