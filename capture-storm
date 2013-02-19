@@ -3,9 +3,11 @@
 usage()
 {
     cat <<__EOF__
-Usage: $(basename $0) [ -u username ]
+Usage: $(basename $0) [ -l logfile ] [ -u username ]
 
 Options:
+  -l logfile            - Log messages to the specified file instead of
+                          storm.log.
   -u username           - Send mail to the specified user instead of
                           \${USER}@$domain
 __EOF__
@@ -25,12 +27,21 @@ pktcount()
 
 domain=$(hostname)
 domain=${domain#*.}
-[ "$domain" = $(hostname -s) ] && domain=
+[ "$domain" = $(hostname -s) ] && domain= # No domain.
 
 while [ $# -gt 0 ]; do
     case $1 in
     -h|--help)
         usage 0
+        ;;
+    -l)
+        shift
+        if [ -z "$1" ]; then
+            log "log file must be a non-empty string"
+            usage
+        fi
+
+        logfile="$1"
         ;;
     -u)
         shift
@@ -45,9 +56,11 @@ while [ $# -gt 0 ]; do
         usage
         ;;
     esac
+    shift
 done
 
 : ${mailto=${USER}@${domain}}
+: ${logfile=storm.log}
 
 if [ -n "$domain" ]; then
     log "sending notification mail to $mailto"
@@ -55,23 +68,45 @@ else
     log "no domain found, not sending mail"
 fi
 
-logcount=0
+sudo tcpdump -i lo0 -s 0 -C 11 -W 500 -w /d2/tmp/lo.cap. &
+tdpid=$!
+
 count=$(pktcount)
+i=0
 
 while true; do
     oldcount=$count
     count=$(pktcount)
-    if [ $((count - oldcount)) -gt 1000 ]; then
-        sudo tcpdump -i lo0 -w /d2/tmp/lo${logcount}.cap 2>/dev/null &
-        tdpid=$!
-        sleep 30
+    diff=$((count - oldcount))
+
+    if [ $((i % 60)) -eq 0 ]; then
+        echo "$(date): $diff" >> $logfile
+    fi
+
+    if [ $((i % 10)) -eq 0 ]; then
+        sockstat -4 -P tcp > sockstat.$((i % 500))
+    fi
+
+    if [ $diff -gt 1000 ]; then
         kill -INT $tdpid
         mail -s $(basename $0) $mailto <<__EOF__
-A possible packet storm capture has been saved in /d2/tmp/lo${logcount}.cap
+A possible packet storm capture has been saved in /d2/tmp/lo.cap.*
 on $(hostname -s). There were $((count - oldcount)) TCP control packets seen
-in the last minute.
+in the last second. Exiting now!
+
+Here's the output of sockstat -4 -P tcp:
+$(sockstat -4 -P tcp)
+
+Here's the output of ps(1):
+$(ps auxwww)
+
+Here's the output of netstat -p tcp:
+$(netstat -p tcp)
 __EOF__
-        logcount=$((logcount + 1))
+        break
     fi
-    sleep 60
+    sleep 1
+    i=$((i + 1))
 done
+
+exit 0
