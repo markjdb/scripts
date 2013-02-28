@@ -1,0 +1,76 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) < save | fetch [ -v <view> ] | purge >
+
+Commands:
+  save          -- Stash modified files under ${HOME}/src/.
+  fetch         -- Sync files from ${HOME}/src/<view> to /usr/src/.
+  purge         -- Remove stashed files.
+
+Options:
+  -v view       -- Specify the view to fetch files from. An attempt to guess
+                   will be made if the view isn't specified.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" 1>&2
+}
+
+if [ "$1" != save -a "$1" != fetch -a "$1" != purge ]; then
+    usage
+fi
+
+CMD=$1
+shift
+
+if [ $CMD = save -o $CMD = purge ]; then
+    CVIEW=$(cleartool pwv -short 2>/dev/null)
+    if [ -z "$CVIEW" -o "$CVIEW" = "** NONE **" ]; then
+        log "Error determining the current view."
+        exit 1
+    fi
+else # $CMD is 'fetch'.
+    case $(uname -i 2>/dev/null) in
+    STOCK)
+        CVIEW=mjohnston_plt_svos_8_2
+        ;;
+    SPB)
+        CVIEW=mjohnston_plt_mts_8_2
+        ;;
+    *)
+        log "Couldn't determine view based on uname info."
+        exit 1
+        ;;
+    esac
+fi
+
+SRCDIR=${HOME}/src/${CVIEW}
+
+case $CMD in
+save)
+    for file in $(cleartool lsco -cview -avobs -short); do
+        dstdir=$(echo ${SRCDIR}$(dirname "$file") | sed 's?vobs/[^/]*/??')
+        mkdir -p "$dstdir"
+        if [ -f "$file" ]; then
+            log "saving $file to $dstdir"
+            cp -f "$file" "$dstdir"
+        fi
+    done
+    ;;
+fetch)
+    cd $SRCDIR
+    for file in $(find . -type f); do
+        log "copying $file to /usr/$file."
+        sudo cp -f $file /usr/$file
+    done
+    ;;
+purge)
+    find ${SRCDIR} -type f -exec rm -f {} \;
+    ;;
+esac
