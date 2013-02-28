@@ -23,6 +23,7 @@ fbt::malloc:entry
 }
 
 fbt::malloc:return
+/args[1] != NULL/
 {
 	printf("%-20d ",  walltimestamp);
 	printf("%-8s  ",  "ALLOC");
