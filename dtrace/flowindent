@@ -1,0 +1,22 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option flowindent
+
+fbt::$1:entry
+{
+	stack();
+	self->in = 1;
+}
+
+fbt:::entry,
+fbt:::return
+/self->in == 1 && probefunc != "$1"/
+{
+}
+
+fbt::$1:return
+/self->in == 1/
+{
+	self->in = 0;
+	exit(0);
+}
