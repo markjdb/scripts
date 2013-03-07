@@ -1,0 +1,79 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) [-l] [-m <addr>] -a <action -c <condition> -t <interval>
+
+Options:
+  -a <action>           -- The action to be executed when the condition
+  -c <condition>        -- The condition to be periodically evaluated.
+  -l                    -- If specified, the script will continue to run
+                           after the condition has been detected to be true.
+                           Otherwise the script will exit with a status of 0.
+  -m <addr>             -- Send an email to <addr> when the condition becomes
+                           true.
+  -t <interval>         -- Sleep for <interval> seconds in between each check.
+                           Use an interval of 0 to busy-wait on the condition.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+INFINITE=false
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -a)
+        shift; ACTION=$1
+        ;;
+    -c)
+        shift; COND=$1
+        ;;
+    -l)
+        INFINITE=true
+        ;;
+    -m)
+        shift; MADDR=$1
+        ;;
+    -t)
+        shift; INTERVAL=$1
+        ;;
+    *)
+        usage
+        ;;
+    esac
+    shift
+done
+
+if [ -z "$ACTION" -o -z "$COND" -o -z "$INTERVAL" ]; then
+    usage
+elif ! [ $(expr "$INTERVAL" : [1-9][0-9]*) -eq ${#INTERVAL} ]; then
+    log "Invalid interval \"${INTERVAL}\""
+    usage
+fi
+
+while true ; do
+    eval "$COND" >/dev/null 2>&1
+
+    if [ $? -eq 0 ]; then
+        if [ -n "$MADDR" ]; then
+            mail -s pollcond "$MADDR" <<__EOF__
+$(basename $0): condition "$COND" evaluated to true. Executing "$ACTION":
+
+$(eval "$ACTION")
+__EOF__
+        else
+            log "condition \"$COND\" evaluated to true. Executing \"$ACTION\":"
+            eval "$ACTION"
+        fi
+
+        [ $INFINITE = false ] && exit 0
+    fi
+
+    [ $INTERVAL -gt 0 ] && sleep $INTERVAL
+done
