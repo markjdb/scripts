@@ -2,7 +2,7 @@
 
 warn()
 {
-    echo "$(basename ${0}): $1" 1>&2
+    echo "$(basename ${0}): $1" >&2
 }
 
 err()
@@ -15,7 +15,7 @@ which pciconf >/dev/null 2>&1 || err "This script only works on FreeBSD."
 
 [ $(id -u) -eq 0 ] || err "This script must be run as root."
 
-isadev=$(pciconf -l | awk '/^isab0/ {print $1}')
+isadev=$(pciconf -l | awk '/^isab0/{print $1}')
 
 if [ -z "$isadev" ]; then
     warn "isab isn't attached... this might not work (but probably will)."
