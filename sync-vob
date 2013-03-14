@@ -3,7 +3,7 @@
 usage()
 {
     cat >&2 <<__EOF__
-Usage: $(basename $0) < save | fetch [ -v <view> ] | purge >
+Usage: $(basename $0) < save [ -d ] | fetch [ -v <view> ] | purge >
 
 Commands:
   save          -- Stash modified files under ${HOME}/src/.
@@ -11,6 +11,7 @@ Commands:
   purge         -- Remove stashed files.
 
 Options:
+  -d            -- Only stash modified files under the current directory.
   -v view       -- Specify the view to fetch files from. An attempt to guess
                    will be made if the view isn't specified.
 __EOF__
@@ -54,7 +55,17 @@ SRCDIR=${HOME}/src/${CVIEW}
 
 case $CMD in
 save)
+    currdir=
+    if [ $# -gt 0 ]; then
+        if [ $1 = "-d" ]; then
+            currdir=$(pwd)
+        else
+            usage
+        fi
+    fi
+
     for file in $(cleartool lsco -cview -avobs -short); do
+        expr "$file" : "$currdir" >/dev/null 2>&1 || continue
         dstdir=$(echo ${SRCDIR}$(dirname "$file") | sed 's?vobs/[^/]*/??')
         mkdir -p "$dstdir"
         if [ -f "$file" ]; then
