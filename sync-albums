@@ -25,31 +25,28 @@ while [ $# -gt 0 ]; do
         usage 0
         ;;
     -m)
-        shift; mntdir="$1"
+        shift; mntdir=$1
         if ! expr "$mntdir" : / >/dev/null 2>&1; then
             log "mount-dir must be an absolute path"; echo
             usage
         fi
         ;;
     *)
-        break
+        albumsdir=$1
+        shift
+        [ $# -gt 0 ] && usage
         ;;
     esac
     shift
 done
 
 : ${mntdir=${HOME}/mnt/ipod}
-
-if [ $# -eq 1 ]; then
-    albumdir="$1"
-elif [ $# -eq 0 ]; then
-    albumsdir=${HOME}/media/music/albums
-else
-    usage
-fi
+: ${albumsdir=${HOME}/media/music/albums}
 
 cd "$albumsdir"
 
+IFS='
+'
 for audfile in $(find . -name '*.mp3' -o -name '*.ogg'); do
     dir=$(dirname "$audfile")
     file=$(basename "$audfile")
