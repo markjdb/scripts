@@ -27,7 +27,7 @@ else
     CC=gcc
 fi
 
-trap 'rm -f $CFILE $OFILE; exit 0' 2 EXIT
+trap 'rm -f $CFILE $OFILE; exit 0' SIGHUP SIGINT SIGTERM EXIT
 
 CFILE=$(mktemp -t $(basename $0))
 OFILE=$(mktemp -t $(basename $0))

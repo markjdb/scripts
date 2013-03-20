@@ -18,7 +18,7 @@ log()
 
 export PATH=/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 
-trap 'rm -f $EXCLUDES; exit 0' 2 EXIT
+trap 'rm -f $EXCLUDES; exit 0' SIGINT SIGHUP SIGTERM EXIT
 
 if [ $# -ne 1 ]; then
     usage
