@@ -1,0 +1,56 @@
+#!/bin/sh
+
+# TODO: make it possible to continue this process if one of the cherry-picks
+# results in a merge conflict. We just need an optional --continue flag and
+# some convention for a tempfile to keep the relevant data.
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) <upstream-branch> <parent-branch> <branch>
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+git()
+{
+    $(which git) $@
+    [ $? -ne 0 ] && exit 1
+}
+
+[ $# -eq 3 ] || usage
+
+upstream=$1
+parent=$2
+branch=$3
+
+revlist=$(git cherry $parent $branch | awk '{print $2}' | tail -r)
+
+mrgcommits=$(git log --format=oneline $parent | grep "Merge branch '$branch'" | \
+             awk '{print $1}')
+
+for commit in ${mrgcommits}; do
+    parcommit=$(git show --pretty=%P $commit | awk '{print $2}')
+    revlist="$parcommit $revlist"
+done
+
+currb=$(git branch | awk '$1 == "*" {print $2}')
+git checkout $upstream
+
+tmpbranch=$(date "+%Y%m%d")-tmp$$
+log "creating temporary branch '$tmpbranch' on branch '$upstream'"
+git checkout -b $tmpbranch
+trap "git checkout -f ${currb}; git branch -q -D ${tmpbranch}; exit" \
+     SIGHUP SIGINT SIGTERM EXIT
+
+for commit in ${revlist}; do
+    # XXX there is probably a better way to do this.
+    git cherry-pick $commit >/dev/null
+done
+
+git diff ${upstream}..HEAD
