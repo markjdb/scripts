@@ -31,7 +31,8 @@ branch=$3
 
 revlist=$(git cherry $parent $branch | awk '{print $2}' | tail -r)
 
-mrgcommits=$(git log --format=oneline $parent | grep "Merge branch '$branch'" | \
+mrgcommits=$(git log --format=oneline $parent | \
+             grep "Merge branch '$branch' into $parent" | \
              awk '{print $1}')
 
 for commit in ${mrgcommits}; do
