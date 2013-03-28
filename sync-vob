@@ -65,7 +65,7 @@ save)
     fi
 
     for file in $(cleartool lsco -cview -avobs -short); do
-        expr "$file" : "$currdir" >/dev/null 2>&1 || continue
+        expr "$file" : "${currdir}/" >/dev/null 2>&1 || continue
         dstdir=$(echo ${SRCDIR}$(dirname "$file") | sed 's?vobs/[^/]*/??')
         mkdir -p "$dstdir"
         if [ -f "$file" ]; then
@@ -78,7 +78,7 @@ fetch)
     cd $SRCDIR
     for file in $(find . -type f); do
         log "copying $file to /usr/$file."
-        sudo cp -f $file /usr/$file
+        cp -f $file /usr/$file
     done
     ;;
 purge)
