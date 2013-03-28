@@ -1,0 +1,19 @@
+#!/bin/sh
+
+# REQUIRE: LOGIN checkcore
+# PROVIDE: reboot
+
+. /etc/rc.subr
+
+name="reboot"
+rcvar="reboot_enable"
+start_cmd="${name}_start"
+stop_cmd=":"
+
+reboot_start()
+{
+    shutdown -r now
+}
+
+load_rc_config $name
+run_rc_command "$1"
