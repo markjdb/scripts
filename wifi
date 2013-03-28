@@ -15,7 +15,13 @@ Linux)
     ;;
 esac
 
-sleep 1
+wpapid=$(pgrep wpa_supplicant)
+if [ -n "$wpapid" ]; then
+    echo "Killing wpa_supplicant"
+    kill $wpapid
+else
+    sleep 1
+fi
 wpa_supplicant -i wlan0 -c /etc/wpa_supplicant.conf -B
 sleep 1
 

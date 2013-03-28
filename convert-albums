@@ -20,7 +20,7 @@ log()
     echo "$(basename $0): $1" >&2
 }
 
-trap 'log "cleaning up.."; wait ; exit 0' 2
+trap 'log "cleaning up.."; wait ; exit 0' SIGHUP SIGINT SIGTERM
 
 while [ $# -gt 0 ]; do
     case $1 in
