@@ -12,6 +12,6 @@ define list-obj-pages
     end
 end
 
-document list-pages
+document list-obj-pages
 Given a vm object, list info about its pages.
 end
