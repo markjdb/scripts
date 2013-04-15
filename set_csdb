@@ -40,8 +40,18 @@ regendb()
             echo "regendb: unknown src tree '$DB'" 1>&2
             return 1
         fi
-        $(cd ${DB_DIR}/${DB} && truncate -s 0 cscope.files && \
-          ./csdbgen.sh && cscope -b -q -k)
+        (
+	    cd ${DB_DIR}/${DB}
+	    . dirs
+	    truncate -s 0 cscope.files
+	    for dir in ${SRCDIRS}; do
+                find $dir -name '*.[chSs]' -o \
+                          -name '*.cpp' -o \
+                          -name '*.cc' -o \
+                          -name '*.hpp' | xargs realpath >> cscope.files
+	    done
+	    cscope -b -q -k
+	)
     done
 
     return 0
