@@ -51,10 +51,10 @@ regendb()
 
             findargs='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp'
             for dir in ${SRCDIRS}; do
-                find $dir $findargs | xargs realpath >> $tmpf
+                find $(realpath $dir) $findargs | xargs realpath >> $tmpf
             done
             for dir in ${DEPDIRS}; do
-                find $dir $findargs | xargs realpath >> cscope.files
+                find $(realpath $dir) $findargs | xargs realpath >> cscope.files
             done
             cat $tmpf >> cscope.files
 
