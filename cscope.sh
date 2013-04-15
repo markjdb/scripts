@@ -44,15 +44,24 @@ regendb()
             cd ${DB_DIR}/${DB}
             . dirs
             truncate -s 0 cscope.files
+            tmpf=$(mktemp -t cscope.sh.XXXXXX)
+            if [ $? -ne 0 ]; then
+                tmpf=/tmp/cscope.$$
+            fi
+
+            findargs='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp'
             for dir in ${SRCDIRS}; do
-                find $dir -name '*.[chSs]' -o \
-                          -name '*.cpp' -o \
-                          -name '*.cc' -o \
-                          -name '*.hpp' | xargs realpath >> cscope.files
+                find $dir $findargs | xargs realpath >> $tmpf
             done
+            for dir in ${DEPDIRS}; do
+                find $dir $findargs | xargs realpath >> cscope.files
+            done
+            cat $tmpf >> cscope.files
+
             cscope -b -q -k
             sed -i '' -e '/ '${DB}'$/d' ../filelist
-            cat cscope.files | sed 's/$/ '${DB}'/' >> ../filelist
+            cat $tmpf | sed 's/$/ '${DB}'/' >> ../filelist
+            rm $tmpf
         )
     done
 }
@@ -68,7 +77,7 @@ edit()
 {
     local DB_DIR DB file
 
-    if [ $# -eq 1 ]; then
+    if [ $# -eq 1 -a -f "$1" ]; then
         DB_DIR=${HOME}/src/cscope
         file=$(realpath $1 | sed 's/\//\\\//g') # Escape slashes.
         DB=$(awk '/^'${file}'/ {print $NF}' ${DB_DIR}/filelist)
