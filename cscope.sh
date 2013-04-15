@@ -49,19 +49,29 @@ regendb()
                 tmpf=/tmp/cscope.$$
             fi
 
-            findargs='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp'
+            findargs='( -name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp )'
             for dir in ${SRCDIRS}; do
-                find $(realpath $dir) $findargs | xargs realpath >> $tmpf
+                find $(readlink -f $dir) $findargs -exec readlink -f {} \; >> $tmpf
             done
             for dir in ${DEPDIRS}; do
-                find $(realpath $dir) $findargs | xargs realpath >> cscope.files
+                find $(readlink -f $dir) $findargs -exec readlink -f {} \; >> cscope.files
             done
             cat $tmpf >> cscope.files
 
             cscope -b -q -k
-            sed -i '' -e '/ '${DB}'$/d' ../filelist
+            case $(uname) in
+            Linux)
+                sed -i -e '/ '${DB}'$/d' ../filelist
+                ;;
+            FreeBSD)
+                sed -i '' -e '/ '${DB}'$/d' ../filelist
+                ;;
+            *)
+                echo "regendb: unhandled OS" >&2
+                ;;
+            esac
             cat $tmpf | sed 's/$/ '${DB}'/' >> ../filelist
-            rm $tmpf
+            rm -f $tmpf
         )
     done
 }
