@@ -29,7 +29,7 @@ regendb()
 
     DB_DIR=${HOME}/src/cscope
     if [ $# -eq 0 ]; then
-        dirs="ls $DB_DIR"
+        dirs="find $DB_DIR -type d -depth 1 -exec basename {} \;"
     else
         dirs="echo $@"
     fi
@@ -41,20 +41,20 @@ regendb()
             return 1
         fi
         (
-	    cd ${DB_DIR}/${DB}
-	    . dirs
-	    truncate -s 0 cscope.files
-	    for dir in ${SRCDIRS}; do
+            cd ${DB_DIR}/${DB}
+            . dirs
+            truncate -s 0 cscope.files
+            for dir in ${SRCDIRS}; do
                 find $dir -name '*.[chSs]' -o \
                           -name '*.cpp' -o \
                           -name '*.cc' -o \
                           -name '*.hpp' | xargs realpath >> cscope.files
-	    done
-	    cscope -b -q -k
-	)
+            done
+            cscope -b -q -k
+            sed -i '' -e '/ '${DB}'$/d' ../filelist
+            cat cscope.files | sed 's/$/ '${DB}'/' >> ../filelist
+        )
     done
-
-    return 0
 }
 
 unsetdb()
@@ -62,4 +62,20 @@ unsetdb()
     [ $# -ne 0 ] && echo "Usage: unsetdb" 1>&2 && return 1
 
     unset CSCOPE_DB
+}
+
+edit()
+{
+    local DB_DIR DB file
+
+    if [ $# -eq 1 ]; then
+        DB_DIR=${HOME}/src/cscope
+        file=$(realpath $1 | sed 's/\//\\\//g') # Escape slashes.
+        DB=$(awk '/^'${file}'/ {print $NF}' ${DB_DIR}/filelist)
+        if [ -n "$DB" -a $(echo "$DB" | wc -l) -eq 1 ]; then
+            setdb $DB
+        fi
+    fi
+
+    $EDITOR $@
 }
