@@ -89,7 +89,7 @@ edit()
 
     if [ $# -eq 1 -a -f "$1" -a -z "$CSCOPE_DB" ]; then
         DB_DIR=${HOME}/src/cscope
-        file=$(realpath $1 | sed 's/\//\\\//g') # Escape slashes.
+        file=$(readlink -f $1 | sed 's/\//\\\//g') # Escape slashes.
         DB=$(awk '/^'${file}'/ {print $NF}' ${DB_DIR}/filelist)
         if [ -n "$DB" -a $(echo "$DB" | wc -l) -eq 1 ]; then
             setdb $DB
