@@ -1,6 +1,6 @@
 define em-dump-descrs
-    set $_adp = (struct adapter *)$arg0
-    set $_txr = (struct tx_ring *)$arg1
+    set $_txr = (struct tx_ring *)$arg0
+    set $_adp = $_txr->adapter
 
     set $_i = 0
     while ($_i < $_adp->num_tx_desc)
@@ -13,8 +13,8 @@ define em-dump-descrs
 end
 
 define em-dump-buffers
-    set $_adp = (struct adapter *)$arg0
-    set $_txr = (struct tx_ring *)$arg1
+    set $_txr = (struct tx_ring *)$arg0
+    set $_adp = $_txr->adapter
 
     set $_i = 0
     while ($_i < $_adp->num_tx_desc)
