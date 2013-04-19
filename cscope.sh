@@ -97,4 +97,6 @@ edit()
     fi
 
     $EDITOR $@
+
+    unset CSCOPE_DB
 }
