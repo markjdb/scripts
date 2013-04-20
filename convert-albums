@@ -50,7 +50,7 @@ fi
 if ! which -s oggenc; then
     log "oggenc isn't installed, exiting"
     exit 1
-elif [ -z "$(ls /proc)" ]; then
+elif ! mount | awk '{print $1}' | egrep -q '^procfs$'; then
     log "procfs isn't mounted, exiting"
     exit 1
 fi
