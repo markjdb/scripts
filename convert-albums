@@ -10,7 +10,7 @@ Options:
                    concurrently. Must be 1 or larger. Defaults to the number
                    of CPUs installed.
   album-dir     -- Name of the target directory. Defaults to
-                   ${HOME}/media/music/albums.
+                   ${HOME}/media/music/classical.
 __EOF__
     exit ${1-1}
 }
@@ -42,7 +42,7 @@ done
 if [ $# -eq 1 ]; then
     albumdir="$1"
 elif [ $# -eq 0 ]; then
-    albumdir=${HOME}/media/music/albums
+    albumdir=${HOME}/media/music/classical
 else
     usage
 fi

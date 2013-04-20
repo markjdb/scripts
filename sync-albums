@@ -9,7 +9,7 @@ Options:
   -m mount-dir    -- iPod mount point. Must be an absolute path.
                      Defaults to ${HOME}/mnt/ipod.
   album-dir       -- Name of the album directory. Defaults to
-                     ${HOME}/media/music/albums.
+                     ${HOME}/media/music/classical.
 __EOF__
     exit ${1-1}
 }
@@ -41,7 +41,7 @@ while [ $# -gt 0 ]; do
 done
 
 : ${mntdir=${HOME}/mnt/ipod}
-: ${albumsdir=${HOME}/media/music/albums}
+: ${albumsdir=${HOME}/media/music/classical}
 
 cd "$albumsdir"
 
