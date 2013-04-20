@@ -1,0 +1,68 @@
+#!/bin/sh
+
+usage()
+{
+    cat >&2 <<__EOF__
+Usage: $(basename $0) [-n]
+
+Arguments:
+  -n            -- Dry run mode. Don't actually modify any files.
+__EOF__
+    exit ${1-1}
+}
+
+log()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+digits()
+{
+    local i count
+
+    i=0
+    count=$(($1 - 1))
+    while [ $count -gt 0 ]; do
+        count=$(($count / 10))
+        i=$((i + 1))
+    done
+
+    echo $i
+}
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -n)
+        dryrun=yes
+        ;;
+    *)
+        usage
+        ;;
+    esac
+    shift
+done
+
+: ${dryrun=no}
+
+if ! which audget >/dev/null 2>&1; then
+    log "audget is not available"
+    exit 1
+fi
+
+OLDIFS=$IFS
+IFS='
+'
+count=$(digits $(find . -depth 1 -name \*.mp3 -o -name \*.flac | wc -l))
+for file in $(find . -depth 1 -name \*.mp3 -o -name \*.flac); do
+    track=$(audget --track "$file" | awk '{print $NF}')
+    if [ $? -ne 0 ]; then
+        log "failed to obtain track number for '$file', skipping"
+        continue
+    fi
+    ext=${file##*.}
+    new=track$(printf "%0${count}d" $track).cdda.$ext
+
+    log "renaming '"$(basename "$file")"' to '$new'"
+    [ $dryrun = no ] && mv "$file" "$new"
+done
+IFS=$OLDIFS
