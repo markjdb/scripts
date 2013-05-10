@@ -111,6 +111,7 @@ for rev in $REVS; do
                                     -e '/^Reviewed by:/d' \
                                     -e '/^Sponsored by:/d' \
                                     -e '/^Submitted by:/d' \
+                                    -e '/^Tested by:/d' \
                                     -e 's/^\([^$]\)/  \1/' >> "$OUTF"
     rm -f $logf
 done
