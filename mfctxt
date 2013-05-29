@@ -108,6 +108,7 @@ for rev in $REVS; do
     cat $logf | sed -e 1,3d -e '$d' -e '/^Approved by:/d' \
                                     -e '/^MFC after:/d' \
                                     -e '/^PR:/d' \
+                                    -e '/^Reported by:/d' \
                                     -e '/^Reviewed by:/d' \
                                     -e '/^Sponsored by:/d' \
                                     -e '/^Submitted by:/d' \
