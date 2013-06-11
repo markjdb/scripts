@@ -49,13 +49,12 @@ regendb()
                 tmpf=/tmp/cscope.$$
             fi
 
-            findcmd='find $(readlink -f $dir) ( -name *.[chSs] -o -name *.cpp \
-                         -o -name *.cc -o -name *.hpp ) -exec readlink -f {} \;'
+            findargs='( -name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp )'
             for dir in ${SRCDIRS}; do
-                eval $findcmd >> $tmpf
+                find $(readlink -f $dir) $findargs -exec readlink -f {} \; >> $tmpf
             done
             for dir in ${DEPDIRS}; do
-                eval $findcmd >> cscope.files
+                find $(readlink -f $dir) $findargs -exec readlink -f {} \; >> cscope.files
             done
             cat $tmpf >> cscope.files
 
