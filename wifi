@@ -2,12 +2,26 @@
 
 case $(uname) in
 FreeBSD)
-    if ifconfig iwn0 >/dev/null 2>&1; then
-        interf=iwn0
-    elif ifconfig run0 >/dev/null 2>&1; then
+    case $(hostname) in
+    charmander)
+        if ifconfig ath0 >/dev/null 2>&1; then
+            interf=ath0
+        fi
+        ;;
+    oddish)
+        if ifconfig iwn0 >/dev/null 2>&1; then
+            interf=iwn0
+        fi
+        ;;
+    esac
+
+    # Test for my USB wlan dongle but let it be overridden.
+    if [ -z "$interf" ] && ifconfig run0 >/dev/null 2>&1; then
         interf=run0
     fi
-    ifconfig wlan0 >/dev/null 2>&1 || ifconfig wlan create wlandev $interf
+
+    ifconfig wlan0 >/dev/null 2>&1 || \
+        ( ifconfig wlan create wlandev $interf && ifconfig wlan0 up )
     ;;
 Linux)
     ifconfig wlan0 up
