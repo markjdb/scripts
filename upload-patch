@@ -1,0 +1,62 @@
+#!/bin/sh
+
+usage()
+{
+    cat <<__EOF__
+Usage: $(basename $0) [ -b <branch> ] [ -p <parent-branch> ]
+
+Options:
+  -b <branch>           -- Branch head to use. Defaults to the current branch.
+
+  -p <parent-branch>    -- Parent branch to diff against. Defaults to
+                           markj-kernel-config.
+__EOF__
+    exit 1
+}
+
+err()
+{
+    echo "$(basename $0): $1" >&2
+    exit 1
+}
+
+TS=$(date +%Y%m%d)
+PBRANCH=markj-kernel-config
+BRANCH=$(git branch | awk '/^\*/{print $NF}')
+if [ $? -ne 0 ]; then
+    err "couldn't obtain git branch list"
+fi
+
+while [ $# -gt 0 ]; do
+    case $1 in
+    -b)
+        shift
+        BRANCH=$1
+        ;;
+    -p)
+        shift
+        PBRANCH=$1
+        ;;
+    *)
+        usage
+        ;;
+    esac
+    shift
+done
+
+if [ $# -gt 0 ]; then
+    usage
+fi
+
+tmpfile=$(mktemp)
+chmod a+r $tmpfile
+git diff ${PBRANCH}..${BRANCH} > $tmpfile
+less $tmpfile
+
+SUBDIR=patches/${TS}-${BRANCH#[0-9]*-}.diff
+scp $tmpfile markj@freefall.freebsd.org:public_html/$SUBDIR
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
+echo "http://people.freebsd.org/~markj/${SUBDIR}"
