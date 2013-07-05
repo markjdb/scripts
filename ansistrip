@@ -1,0 +1,6 @@
+#!/usr/bin/env perl
+
+# /usr/ports/devel/p5-Term-ANSIColor.
+use Term::ANSIColor qw(colorstrip);
+
+print colorstrip $_ while <>;
