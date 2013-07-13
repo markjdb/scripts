@@ -1,0 +1,77 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+
+BEGIN
+{
+	tstate[0] = "CLOSED";
+	tstate[1] = "LISTEN";
+	tstate[2] = "SYN_SENT";
+	tstate[3] = "SYN_RECEIVED";
+	tstate[4] = "ESTABLISHED";
+	tstate[5] = "CLOSE_WAIT";
+	tstate[6] = "FIN_WAIT_1";
+	tstate[7] = "CLOSING";
+	tstate[8] = "LAST_ACK";
+	tstate[9] = "FIN_WAIT_2";
+	tstate[10]= "TIME_WAIT";
+}
+
+fbt::kern_close:entry
+/execname == "java"/
+{
+	self->sd = arg1;
+	printf("%Y:\t PID %d closing descriptor %d\n", walltimestamp, pid, arg1);
+}
+
+fbt::kern_close:return
+/execname == "java"/
+{
+	printf("%Y:\tPID %d returning %d from kern_close\n", walltimestamp, pid, arg1);
+}
+
+/* A close(2) can be initiated by dup2'ing onto an existing descriptor. */
+fbt::do_dup:entry
+/execname == "java"/
+{
+	self->sd = arg3;
+	printf("%Y:\t PID %d duping %d onto descriptor %d\n", walltimestamp, pid, arg2, arg3);
+}
+
+fbt::tcp_usr_disconnect:entry,
+fbt::tcp_usr_close:entry
+/execname == "java" && self->sd != 0/
+{
+	inp = (struct inpcb *)((struct socket *)arg0)->so_pcb;
+	so = inp->inp_socket;
+	laddr = (uint8_t *)&inp->inp_inc.inc_ie.ie_dependladdr.ie46_local.ia46_addr4;
+	lport = (uint16_t)inp->inp_inc.inc_ie.ie_lport;
+	faddr = (uint8_t *)&inp->inp_inc.inc_ie.ie_dependfaddr.ie46_foreign.ia46_addr4;
+	fport = (uint16_t)inp->inp_inc.inc_ie.ie_fport;
+
+	printf("%Y:\tPID %d is closing TCP socket %d (flags 0x%x, options 0x%x) %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u\n",
+	       walltimestamp, pid, self->sd, inp->inp_flags, so->so_options,
+	       laddr[0], laddr[1], laddr[2], laddr[3], ntohs(lport),
+	       faddr[0], faddr[1], faddr[2], faddr[3], ntohs(fport));
+}
+
+fbt::tcp_disconnect:entry
+/execname == "java" && self->sd != 0/
+{
+	tp = (struct tcpcb *)arg0;
+
+	self->tp = tp;
+	printf("\t\t\tconnection was in state %s, ", tstate[tp->t_state]);
+}
+
+/* fbt::tcp_disconnect:return never fires it seems. */
+fbt::tcp_usr_disconnect:return,
+fbt::tcp_usr_close:return
+/self->tp != 0 && self->sd != 0/
+{
+	tp = (struct tcpcb *)self->tp;
+	self->tp = 0;
+	self->sd = 0;
+
+	printf("now in state %s\n", tstate[tp->t_state]);
+}
