@@ -1,0 +1,22 @@
+#!/usr/sbin/dtrace -qs
+
+dtrace:::BEGIN
+{
+	printf("%5s %12s %5s %-6s %s\n", "FROM", "COMMAND", "SIG", "TO",
+	    "RESULT");
+}
+
+syscall::kill:entry
+{
+	self->target = arg0;
+	self->signal = arg1;
+}
+
+syscall::kill:return
+{
+	printf("%5d %12s %5d %-6d %d\n", pid, execname, self->signal,
+	    self->target, (int)arg0);
+
+	self->target = 0;
+	self->signal = 0;
+}
