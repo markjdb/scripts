@@ -53,10 +53,11 @@ chmod a+r $tmpfile
 git diff ${PBRANCH}..${BRANCH} > $tmpfile
 less $tmpfile
 
-SUBDIR=patches/${TS}-${BRANCH#[0-9]*-}.diff
-scp $tmpfile markj@freefall.freebsd.org:public_html/$SUBDIR
+FILE=patches/${BRANCH#[0-9]*-}/${TS}-${BRANCH#[0-9]*-}.diff
+ssh markj@freefall.freebsd.org "mkdir -p public_html/$(dirname $FILE)"
+scp $tmpfile markj@freefall.freebsd.org:public_html/$FILE
 if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "http://people.freebsd.org/~markj/${SUBDIR}"
+echo "http://people.freebsd.org/~markj/${FILE}"
