@@ -23,6 +23,7 @@ trap 'rm -f $EXCLUDES; exit 0' SIGINT SIGHUP SIGTERM EXIT
 if [ $# -ne 1 ]; then
     usage
 fi
+
 DSTDIR="$1"
 if [ ! -d "$DSTDIR" ]; then
     log "backup-dir must be an existing directory. Exiting."
@@ -36,11 +37,13 @@ if [ -z "$EXCLUDES" ]; then
 fi
 
 cat <<__EOF__ > $EXCLUDES
-mark/dl
-mark/mnt
-mark/sent
-mark/tmp
-mark/.*
+dl
+mnt
+src/*-obj/
+src/freebsd-ports/distfiles/*
+tmp
+var
+vbox
 __EOF__
 
-rsync -av --exclude-from=$EXCLUDES $HOME "$DSTDIR"
+rsync -akv --exclude-from=$EXCLUDES $HOME/* "$DSTDIR"/${USER}-$(hostname -s)
