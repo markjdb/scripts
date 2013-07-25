@@ -5,8 +5,10 @@
 fbt::ffs_fsync:entry
 /args[0]->a_vp->v_type == 1 && args[0]->a_vp->v_cache_dst.tqh_first != 0/
 {
+	vp = args[0]->a_vp;
+	nc = vp->v_cache_dst.tqh_first;
+
 	printf("%Y: %s: fsyncing %s/%s. %d dirty blocks, %d clean blocks\n", walltimestamp, execname,
-	    stringof(&(args[0]->a_vp->v_cache_dst.tqh_first->nc_dvp->v_cache_dst.tqh_first->nc_name[0])),
-	    stringof(&(args[0]->a_vp->v_cache_dst.tqh_first->nc_name[0])),
-	    args[0]->a_vp->v_bufobj.bo_dirty.bv_cnt, args[0]->a_vp->v_bufobj.bo_clean.bv_cnt);
+	    stringof(&(nc->nc_dvp->v_cache_dst.tqh_first->nc_name[0])), stringof(&(nc->nc_name[0])),
+	    vp->v_bufobj.bo_dirty.bv_cnt, vp->v_bufobj.bo_clean.bv_cnt);
 }
