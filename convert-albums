@@ -57,7 +57,10 @@ fi
 
 [ ${#jobs} -gt 0 -a $(expr "$jobs" : [1-9][0-9]*) -eq ${#jobs} ] || usage
 
-cd "$albumdir"
+if ! cd "$albumdir" >/dev/null 2>&1; then
+    log "couldn't cd to $albumdir"
+    exit 1
+fi
 count=$(find . -name '*.flac' | wc -l | awk '{print $1}')
 nproc=0
 n=0
