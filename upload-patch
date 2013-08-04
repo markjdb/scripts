@@ -20,7 +20,6 @@ err()
     exit 1
 }
 
-TS=$(date +%Y%m%d)
 PBRANCH=markj-kernel-config
 BRANCH=$(git branch | awk '/^\*/{print $NF}')
 if [ $? -ne 0 ]; then
@@ -53,8 +52,21 @@ chmod a+r $tmpfile
 git diff ${PBRANCH}..${BRANCH} > $tmpfile
 less $tmpfile
 
-FILE=patches/${BRANCH#[0-9]*-}/${TS}-${BRANCH#[0-9]*-}.diff
-ssh markj@freefall.freebsd.org "mkdir -p public_html/$(dirname $FILE)"
+DIR=patches/${BRANCH#[0-9]*-}
+ssh markj@freefall.freebsd.org "mkdir -p public_html/${DIR}"
+
+COUNTF=$(mktemp)
+scp markj@freefall.freebsd.org:public_html/${DIR}/count $COUNTF 2>/dev/null
+if [ $(stat -f "%z" $COUNTF) -eq 0 ]; then
+    COUNT=1
+else
+    COUNT=$(cat $COUNTF)
+    COUNT=$(($COUNT + 1))
+fi
+echo $COUNT > $COUNTF
+scp $COUNTF markj@freefall.freebsd.org:public_html/${DIR}/count
+
+FILE=${DIR}/${BRANCH#[0-9]*-}-${COUNT}.diff
 scp $tmpfile markj@freefall.freebsd.org:public_html/$FILE
 if [ $? -ne 0 ]; then
     exit 1
