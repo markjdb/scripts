@@ -46,4 +46,4 @@ var
 vbox
 __EOF__
 
-rsync -akv --exclude-from=$EXCLUDES $HOME/* "$DSTDIR"/${USER}-$(hostname -s)
+rsync -akv --safe-links --exclude-from=$EXCLUDES $HOME/* "$DSTDIR"/${USER}-$(hostname -s)
