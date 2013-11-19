@@ -1,0 +1,72 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+#pragma D option switchrate=10hz
+
+dtrace:::BEGIN
+{
+    in = 0;
+    out = 0;
+}
+
+fbt::tcp_usr_attach:entry
+{
+    self->so = args[0];
+}
+
+fbt::tcp_usr_attach:return
+/args[1] == 0 && self->so != NULL/
+{
+    procs[(uintptr_t)self->so->so_pcb] = execname;
+    self->so = NULL;
+}
+
+fbt::sosend_generic:entry, fbt::soreceive:entry
+/args[0]->so_proto->pr_protocol == IPPROTO_TCP/
+{
+    procs[(uintptr_t)args[0]->so_pcb] = execname;
+}
+
+fbt::in_pcbdetach:entry
+{
+    procs[(uintptr_t)args[0]] = 0;
+}
+
+tcp:::send
+/procs[args[1]->cs_cid] != ""/
+{
+    this->bytes = args[2]->ip_plength - args[4]->tcp_offset;
+
+    out += this->bytes;
+    @bytes[procs[args[1]->cs_cid], args[2]->ip_saddr, args[4]->tcp_sport,
+        args[2]->ip_daddr, args[4]->tcp_dport] = sum(this->bytes);
+}
+
+tcp:::receive
+/procs[args[1]->cs_cid] != ""/
+{
+    this->bytes = args[2]->ip_plength - args[4]->tcp_offset;
+
+    in += this->bytes;
+    @bytes[procs[args[1]->cs_cid], args[2]->ip_daddr, args[4]->tcp_dport,
+        args[2]->ip_saddr, args[4]->tcp_sport] = sum(this->bytes);
+}
+
+profile:::tick-2sec
+{
+    out /= 1024;
+    in /= 1024;
+
+    printf("%Y, TCP in: %6dKB, TCP out: %6dKB, TCP total: %6dKB\n", walltimestamp,
+        in, out, in + out);
+
+    printf("%-12s %-15s %5s %-15s %5s %9s\n", "PROC", "LADDR", "LPORT",
+        "RADDR", "RPORT", "SIZE");
+
+    printa("%-12s %-15s %5d %-15s %5d %@9d\n", @bytes);
+    printf("\n");
+
+    trunc(@bytes);
+    in = 0;
+    out = 0;
+}

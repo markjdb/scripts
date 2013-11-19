@@ -1,0 +1,8 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option strsize=4096
+
+fbt::kern_execve:entry
+{
+	printf("%s", memstr(args[1]->begin_argv, ' ', args[1]->begin_envv - args[1]->begin_argv));
+}
