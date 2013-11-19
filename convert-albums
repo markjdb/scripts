@@ -65,13 +65,16 @@ count=$(find . -name '*.flac' | wc -l | awk '{print $1}')
 nproc=0
 n=0
 
+OLDIFS=$IFS
+IFS='
+'
 for file in $(find . -name '*.flac'); do
-    basefile=$(basename ${file%.flac})
+    basefile=$(basename "${file%.flac}")
     basedir=${file%/flac/*.flac}
     n=$((n + 1))
 
     # Check to see if a converted version already exists.
-    if [ -f ${basedir}/ogg/${basefile}.ogg -o -f ${basedir}/flac/${basefile}.ogg ]; then
+    if [ -f "${basedir}/ogg/${basefile}.ogg" -o -f "${basedir}/flac/${basefile}.ogg" ]; then
         log "($n of $count) skipping $file"
         continue
     fi
@@ -87,6 +90,7 @@ for file in $(find . -name '*.flac'); do
         sleep 1
 
         unset tpidq
+        IFS=$OLDIFS
         for pid in ${pidq}; do
             piddir=/proc/$pid
             status=${piddir}/status
@@ -97,7 +101,10 @@ for file in $(find . -name '*.flac'); do
                 nproc=$((nproc - 1))
             fi
         done
-        pidq="$tpidq"
+        OLDIFS=$IFS
+        IFS='
+'
+        pidq=$tpidq
     done
 done
 
@@ -107,13 +114,13 @@ for file in $(find . -name '*.flac'); do
     basefile=$(basename ${file%.flac})
     basedir=${file%/flac/*.flac}
 
-    if [ ! -d ${basedir}/ogg ]; then
+    if [ ! -d "${basedir}/ogg" ]; then
         log "${basedir}/ogg doesn't exist - creating"
-        mkdir ${basedir}/ogg
+        mkdir "${basedir}/ogg"
     fi
 
     if [ -f ${basedir}/flac/${basefile}.ogg ]; then
-        mv -f ${basedir}/flac/${basefile}.ogg ${basedir}/ogg/${basefile}.ogg
+        mv -f "${basedir}/flac/${basefile}.ogg" "${basedir}/ogg/${basefile}.ogg"
     fi
 done
 
