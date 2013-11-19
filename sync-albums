@@ -6,8 +6,7 @@ usage()
 Usage: $(basename $0) [ -m mount-dir ] [ album-dir ]
 
 Options:
-  -m mount-dir    -- iPod mount point. Must be an absolute path.
-                     Defaults to ${HOME}/mnt/ipod.
+  -m mount-dir    -- iPod mount point. Defaults to ${HOME}/mnt/ipod.
   album-dir       -- Name of the album directory. Defaults to
                      ${HOME}/media/music/classical.
 __EOF__
@@ -26,10 +25,6 @@ while [ $# -gt 0 ]; do
         ;;
     -m)
         shift; mntdir=$1
-        if ! expr "$mntdir" : / >/dev/null 2>&1; then
-            log "mount-dir must be an absolute path"; echo
-            usage
-        fi
         ;;
     *)
         albumsdir=$1
@@ -42,6 +37,13 @@ done
 
 : ${mntdir=${HOME}/mnt/ipod}
 : ${albumsdir=${HOME}/media/music/classical}
+
+if [ ! -d "$mntdir" ]; then
+    log "$mntdir is not a directory"
+    exit 1
+elif ! expr "$mntdir" : / >/dev/null 2>&1; then
+    mntdir=$(realpath "$mntdir")
+fi
 
 cd "$albumsdir"
 
