@@ -85,7 +85,7 @@ unsetdb()
 
 edit()
 {
-    local DB_DIR DB file
+    local DB_DIR DB
 
     if [ $# -eq 1 -a -f "$1" -a -z "$CSCOPE_DB" ]; then
         DB_DIR=${HOME}/src/cscope
@@ -98,4 +98,19 @@ edit()
     $EDITOR $@
 
     unset CSCOPE_DB
+}
+
+editf()
+{
+    local files
+
+    [ $# -ne 1 ] && echo "Usage: editf <file>" >&2 && return 1
+
+    files=$(find . -name "$1")
+    if [ $(echo "$files" | wc -l) -ne 1 ]; then
+        echo "editf: found multiple matches:"
+        echo "$files"
+    fi
+
+    edit "$files"
 }
