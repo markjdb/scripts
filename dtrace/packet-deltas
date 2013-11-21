@@ -1,0 +1,22 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+#pragma D option switchrate=10hz
+
+dtrace:::BEGIN
+{
+        lastr = timestamp;
+	lasts = timestamp;
+}
+
+ip:::receive
+{
+	@rec["received packets"] = quantize(timestamp - lastr);
+	lastr = timestamp;
+}
+
+ip:::send
+{
+	@send["sent packets"] = quantize(timestamp - lasts);
+	lasts = timestamp;
+}

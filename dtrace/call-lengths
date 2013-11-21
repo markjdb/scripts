@@ -1,0 +1,13 @@
+#!/usr/sbin/dtrace -s
+
+fbt::$1:entry
+{
+	self->ts = timestamp;
+}
+
+fbt::$1:return
+/self->ts != 0/
+{
+	@ = quantize(timestamp - self->ts);
+	self->ts = 0;
+}
