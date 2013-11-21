@@ -1,0 +1,14 @@
+#!/usr/sbin/dtrace -s
+
+int ccount;
+
+fbt::$1:entry
+{
+	ccount += 1;
+}
+
+profile:::tick-1sec
+{
+	printf("%Y: saw %d calls", walltimestamp, ccount);
+	ccount = 0;
+}
