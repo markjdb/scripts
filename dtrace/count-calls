@@ -1,5 +1,7 @@
 #!/usr/sbin/dtrace -s
 
+#pragma D option quiet
+
 int ccount;
 
 fbt::$1:entry
@@ -9,6 +11,6 @@ fbt::$1:entry
 
 profile:::tick-1sec
 {
-	printf("%Y: saw %d calls", walltimestamp, ccount);
+	printf("%Y: saw %d calls\n", walltimestamp, ccount);
 	ccount = 0;
 }
