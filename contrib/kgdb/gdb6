@@ -805,26 +805,29 @@ define printpcpu
     end
     printf "curthread    = "
     if ($arg0->pc_curthread != 0)
-	printf "%p: pid %d \"%s\"\n", $arg0->pc_curthread, \
+	printf "%p: pid %d \"%s\", tid %d\n", $arg0->pc_curthread, \
 	    $arg0->pc_curthread->td_proc->p_pid, \
-	    $arg0->pc_curthread->td_proc->p_comm
+	    $arg0->pc_curthread->td_proc->p_comm, \
+	    $arg0->pc_curthread->td_tid
     else
 	printf "none\n"
     end
     printf "curpcb       = %p\n", $arg0->pc_curpcb
     printf "fpcurthread  = "
     if ($arg0->pc_fpcurthread != 0)
-	printf "%p: pid %d \"%s\"\n", $arg0->pc_fpcurthread, \
+	printf "%p: pid %d \"%s\", tid %d\n", $arg0->pc_fpcurthread, \
 	    $arg0->pc_fpcurthread->td_proc->p_pid, \
-	    $arg0->pc_fpcurthread->td_proc->p_comm
+	    $arg0->pc_fpcurthread->td_proc->p_comm, \
+	    $arg0->pc_fpcurthread->td_tid
     else
 	printf "none\n"
     end
     printf "idlethread   = "
     if ($arg0->pc_idlethread != 0)
-	printf "%p: pid %d \"%s\"\n", $arg0->pc_idlethread, \
+	printf "%p: pid %d \"%s\", tid %d\n", $arg0->pc_idlethread, \
 	    $arg0->pc_idlethread->td_proc->p_pid, \
-	    $arg0->pc_idlethread->td_proc->p_comm
+	    $arg0->pc_idlethread->td_proc->p_comm, \
+	    $arg0->pc_idlethread->td_tid
     else
 	printf "none\n"
     end
