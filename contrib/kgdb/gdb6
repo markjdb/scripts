@@ -1,0 +1,3637 @@
+# $Id: gdb6,v 1.23 2013/10/22 15:46:29 jhb Exp $
+# General kernel macros
+
+# Determine OS major version
+set $osrelease = osreldate / 100000
+
+# Macros
+set $B_AGE = 0x00000001
+set $B_NEEDCOMMIT = 0x00000002
+set $B_ASYNC = 0x00000004
+set $B_DIRECT = 0x00000008
+set $B_DEFERRED = 0x00000010
+set $B_CACHE = 0x00000020
+set $B_VALIDSUSPWRT = 0x00000040
+set $B_DELWRI = 0x00000080
+set $B_PERSISTENT = 0x00000100
+set $B_DONE = 0x00000200
+set $B_EINTR = 0x00000400
+set $B_INVAL = 0x00002000
+set $B_NOCACHE = 0x00008000
+set $B_MALLOC = 0x00010000
+set $B_CLUSTEROK = 0x00020000
+set $B_DIRTY = 0x00200000
+set $B_RELBUF = 0x00400000
+set $B_NEEDSGIANT = 0x02000000
+set $B_PAGING = 0x04000000
+set $B_MANAGED = 0x08000000
+set $B_RAM = 0x10000000
+set $B_VMIO = 0x20000000
+set $B_CLUSTER = 0x40000000
+set $B_REMFREE = 0x80000000
+
+set $BIO_READ = 0x01
+set $BIO_WRITE = 0x02
+set $BIO_DELETE = 0x04
+set $BIO_GETATTR = 0x08
+set $BIO_FLUSH = 0x10
+
+set $TDI_SUSPENDED = 0x1
+set $TDI_SLEEPING = 0x2
+set $TDI_SWAPPED = 0x4
+set $TDI_LOCK = 0x8
+set $TDI_IWAIT = 0x10
+
+set $TDF_SINTR = 0x8
+
+# TID_MAX is a wild guess
+set $PID_MAX = 99999
+set $TID_MAX = 999999
+
+set $P_CONTROLT = 0x2
+set $P_PPWAIT = 0x10
+set $P_HADTHREADS = 0x80
+set $P_SYSTEM = 0x200
+set $P_TRACED = 0x800
+set $P_WEXIT = 0x02000
+set $P_STOPPED_SIG = 0x20000
+set $P_STOPPED_TRACE = 0x40000
+set $P_STOPPED_SINGLE = 0x80000
+set $P_STOPPED = ($P_STOPPED_SIG | $P_STOPPED_TRACE | $P_STOPPED_SINGLE)
+
+if ($osrelease >= 7)
+    set $P_INMEM = 0x10000000
+else
+    set $PS_INMEM = 0x1
+end
+
+if ($osrelease >= 8)
+    set $prison0 = &prison0
+else
+    set $prison0 = 0
+end
+
+if ($osrelease >= 7)
+	set $LO_CLASSMASK = 0x0f000000
+	set $LO_CLASSSHIFT = 24
+end
+
+if ($osrelease >= 8)
+    set $LK_SHARE = 0x01
+    set $LK_SHARED_WAITERS = 0x02
+    set $LK_EXCLUSIVE_WAITERS = 0x04
+    set $LK_EXCLUSIVE_SPINNERS = 0x08
+    set $LK_FLAGMASK = 0x0f
+    set $LK_SHARERS_SHIFT = 3
+    set $LK_UNLOCKED = ((0) << $LK_SHARERS_SHIFT | $LK_SHARE)
+    set $LK_KERNPROC = ((uintptr_t)(-1) & ~$LK_FLAGMASK)
+else
+    set $LK_WAITDRAIN = 0x00080000
+    set $LK_KERNPROC = (void *)-2
+end
+
+set $MAP_ENTRY_IS_SUB_MAP = 0x0002
+set $MAP_ENTRY_COW = 0x0004
+set $MAP_ENTRY_NEEDS_COPY = 0x0008
+set $MAP_ENTRY_NOFAULT = 0x0010
+
+set $MTX_UNOWNED = 4
+
+set $NCF_TS = 0x04
+
+set $OBJT_DEFAULT = 0
+set $OBJT_SWAP = 1
+set $OBJT_VNODE = 2
+set $OBJT_DEVICE = 3
+set $OBJT_PHYS = 4
+set $OBJT_DEAD = 5
+set $OBJT_SG = 6
+
+if (osreldate >= 603000)
+    set $SX_LOCK_SHARED = 0x01
+    set $SX_LOCK_FLAGMASK = 0x0f
+    set $SX_SHARERS_SHIFT = 4
+end
+
+set $VM_PROT_READ = 0x01
+set $VM_PROT_WRITE = 0x02
+set $VM_PROT_EXECUTE = 0x04
+
+set $VV_ROOT = 0x0001
+set $VV_TEXT = 0x0020
+set $VV_SYSTEM = 0x0080
+set $VI_DOOMED = 0x0080
+set $VI_FREE = 0x0100
+
+set $CTLTYPE = 0xf
+set $CTLTYPE_NODE = 1
+
+set $M_EXT = 0x0001
+set $M_PKTHDR = 0x0002
+
+set $IPPROTO_IP = 0
+set $IPPROTO_ICMP = 1
+set $IPPROTO_TCP = 6
+set $IPPROTO_UDP = 17
+
+set $TCPS_CLOSED = 0
+set $TCPS_LISTEN = 1
+set $TCPS_SYN_SENT = 2
+set $TCPS_SYN_RECEIVED = 3
+set $TCPS_ESTABLISHED = 4
+set $TCPS_CLOSE_WAIT = 5
+set $TCPS_FIN_WAIT_1 = 6
+set $TCPS_CLOSING = 7
+set $TCPS_LAST_ACK = 8
+set $TCPS_FIN_WAIT_2 = 9
+set $TCPS_TIME_WAIT = 10
+
+set $_NCPUBITS = sizeof(long) * 8
+set $_NCPUWORDS = sizeof(struct _cpuset) / sizeof(long)
+
+# Number of chars output by %p
+set $PTRWIDTH = (sizeof(void *) * 2 + 2)
+
+if (osreldate < 801501)
+    set $arch = machine_arch
+else
+    set $arch = sysctl_hw_machine_arch::machine_arch
+end
+
+if ($arch[0] == 'a' && $arch[1] == 'm' && $arch[2] == 'd')
+    source gdb6.amd64
+    set $__amd64__ = 1
+end
+if ($arch[0] == 'i' && $arch[1] == '3' && $arch[2] == '8')
+    source gdb6.i386
+    set $__i386__ = 1
+end
+
+# Lookup a process specified via $arg0.  We first check to see if it
+# is a valid PID, if not, we assume it is a pointer to a struct proc.
+# If it looks like a PID, we walk the process lists to find it.  The
+# proc pointer is returned in $arg1.
+define lookup_proc
+    set $_pid = (unsigned)$arg0
+    set $arg1 = (struct proc *)$arg0
+    if ($_pid <= $PID_MAX)
+	set $_zomb = 0
+	set $_p = allproc.lh_first
+	while ($_p)
+	    if ($_p->p_pid == $_pid)
+		set $arg1 = $_p
+		set $_p = 0
+	    else
+		set $_p = $_p->p_list.le_next
+		if ($_p == 0 && $_zomb == 0)
+		    set $_p = zombproc.lh_first
+		    set $_zomb = 1
+		end
+	    end
+	end
+    end
+end
+
+# Lookup a thread specified via $arg0.  We walk all the processes and threads
+# looking to see if $arg0 specifies a valid TID.  In addition, if $arg2 is
+# non-zero, then we will check to see if it's a valid PID as well, and if so
+# we return the first thread in the process with that PID.  If it is not a
+# valid tid, then we assume $arg0 is a thread pointer and leave it alone.
+# The thread pointer is returned in $arg1.
+define lookup_thread
+    set $_id = (unsigned)$arg0
+    set $arg1 = (struct thread *)$arg0
+    if ($_id <= $TID_MAX)
+	set $_zomb = 0
+	set $_p = allproc.lh_first
+	while ($_p)
+	    if ($arg2 && $_p->p_pid == $_id)
+		set $arg1 = $_p->p_threads.tqh_first
+		set $_p = 0
+	    else
+		set $_td = $_p->p_threads.tqh_first
+		while ($_td)
+		    if ($_td->td_tid == $_id)
+			set $arg1 = $_td
+			set $_td = 0
+			set $_p = 0
+		    else
+			set $_td = $_td->td_plist.tqe_next
+		    end
+		end
+		if ($_p)
+		    set $_p = $_p->p_list.le_next
+		    if ($_p == 0 && $_zomb == 0)
+			set $_p = zombproc.lh_first
+			set $_zomb = 1
+		    end
+		end
+	    end
+	end
+    end
+end
+
+# formatting helper
+# spaces <count>
+define spaces
+    set $_count = $arg0
+    while (--$_count >= 0)
+	printf " "
+    end
+end
+
+# prints a single flag from a flag field
+# print_flag <flags> <flag> <name> <separator>
+define print_flag
+    if ($arg0 & $arg1)
+	if ($_comma)
+	    printf $arg3
+	end
+	printf $arg2
+	set $_comma = 1
+    end
+end
+
+# dumpthread <td> <all>
+# ps helper to display info about a thread
+define dumpthread
+    if ($arg1)
+	set $x = 0
+	printf " %9d   %3d        ", $arg0->td_tid, $arg0->td_priority
+	if ($arg0->td_state == TDS_RUNNING)
+	    printf " Run    "
+	    set $x = 1
+	end
+	if ($arg0->td_state == TDS_RUNQ)
+	    printf " RunQ   "
+	    set $x = 1
+	end
+	if ($arg0->td_state == TDS_CAN_RUN)
+	    printf " CanRun "
+	    set $x = 1
+	end
+	if ($arg0->td_state == TDS_INACTIVE)
+	    printf " Inactv "
+	    set $x = 1
+	end
+	if ($arg0->td_state == TDS_INHIBITED)
+	    printf " "
+	    set $i = 6
+	    if ($arg0->td_inhibitors & $TDI_LOCK)
+		printf "L"
+		set $i = $i - 1
+	    end
+	    if ($arg0->td_inhibitors & $TDI_SLEEPING)
+		if ($arg0->td_flags & $TDF_SINTR)
+		    printf "S"
+		    set $i = $i - 1
+		else
+		    printf "D"
+		    set $i = $i - 1
+		end
+	    end
+	    if ($arg0->td_inhibitors & $TDI_SWAPPED)
+		printf "W"
+		set $i = $i - 1
+	    end
+	    if ($arg0->td_inhibitors & $TDI_IWAIT)
+		printf "I"
+		set $i = $i - 1
+	    end
+	    if ($arg0->td_inhibitors & $TDI_SUSPENDED)
+		printf "s"
+		set $i = $i - 1
+	    end
+	    while ($i != 0)
+		printf " "
+		set $i = $i - 1
+	    end
+	    printf " "
+	    set $x = 1
+	end
+	if ($x == 0)
+	    printf " ???    "
+	end
+    end
+    if ($arg0->td_inhibitors & $TDI_LOCK)
+	printf "*%-8.8s %p ", $arg0->td_lockname, $arg0->td_blocked
+    else
+	if ($arg0->td_wchan != 0)
+	    printf " %-8.8s %p ", $arg0->td_wmesg, $arg0->td_wchan
+	else
+	    if ($arg0->td_state == TDS_RUNNING)
+		printf " CPU %2d   ", $arg0->td_oncpu
+	    else
+		printf "          "
+	    end
+	    spaces $PTRWIDTH
+	    printf " "
+	end
+    end
+    if ($arg0->td_proc->p_flag & $P_SYSTEM)
+	printf "["
+    end
+    if ($osrelease >= 7)
+	if ($arg0->td_name[0] != '\0')
+	    printf "%s", $arg0->td_name
+	else
+	    printf "%s", $arg0->td_proc->p_comm
+	end
+    else
+	printf "%s", $arg0->td_proc->p_comm
+    end
+    if ($arg0->td_proc->p_flag & $P_SYSTEM)
+	printf "]"
+    end
+    printf "\n"
+end
+document dumpthread
+Show one-line summary of a thread's state.
+end
+
+# procstate <p>
+# Helper function for 'ps' to dump process state string
+define procstate
+    # First determine the primary process state
+    if ($arg0->p_state == PRS_NORMAL)
+	if ($arg0->p_flag & $P_STOPPED)
+	    printf "T"
+	else
+	    set $rflag = 0
+	    set $sflag = 0
+	    set $dflag = 0
+	    set $lflag = 0
+	    set $wflag = 0
+	    set $swapflag = 0
+	    set $td = $arg0->p_threads.tqh_first
+	    while ($td != 0)
+		if ($td->td_state == TDS_RUNNING || \
+		    $td->td_state == TDS_RUNQ || $td->td_state == TDS_CAN_RUN)
+		    set $rflag = $rflag + 1
+		end
+		if ($td->td_inhibitors & $TDI_LOCK)
+		    set $lflag = $lflag + 1
+		end
+		if ($td->td_inhibitors & $TDI_SLEEPING)
+		    if ($td->td_flags & $TDF_SINTR)
+			set $sflag = $sflag + 1
+		    else
+			set $dflag = $dflag + 1
+		    end
+		end
+		if ($td->td_inhibitors & $TDI_IWAIT)
+		    set $wflag = $wflag + 1
+		end
+		if ($td->td_inhibitors == $TDI_SWAPPED)
+		    set $swapflag = $swapflag + 1
+		end
+		set $td = $td->td_plist.tqe_next
+	    end
+	    if ($rflag)
+		printf "R"
+	    else
+		if ($lflag)
+		    printf "L"
+		else
+		    if ($dflag)
+			printf "D"
+		    else
+			if ($sflag)
+			    printf "S"
+			else
+			    if ($wflag)
+				printf "W"
+			    else
+				if ($swapflag)
+				    # We show threads only waiting for swap as
+				    # runnable
+				    printf "R"
+				else
+				    printf "?"
+				end
+			    end
+			end
+		    end
+		end
+	    end
+	end
+    else
+	if ($arg0->p_state == PRS_NEW)
+	    printf "N"
+	else
+	    if ($arg0->p_state == PRS_ZOMBIE)
+		printf "Z"
+	    else
+		printf "U"
+	    end
+	end
+    end
+
+    # Extra states
+    set $i = 5
+    if ($osrelease >= 7)
+	if (!($arg0->p_flag & $P_INMEM))
+	    printf "W"
+	    set $i = $i - 1
+	end
+    else
+	if (!($arg0->p_sflag & $PS_INMEM))
+	    printf "W"
+	    set $i = $i - 1
+ 	end
+    end
+    if ($arg0->p_flag & $P_TRACED)
+	printf "X"
+	set $i = $i - 1
+    end
+    if ($arg0->p_flag & $P_WEXIT && $arg0->p_state != PRS_ZOMBIE)
+	printf "E"
+	set $i = $i - 1
+    end
+    if ($arg0->p_flag & $P_PPWAIT)
+	printf "V"
+	set $i = $i - 1
+    end
+    if ($arg0->p_flag & $P_SYSTEM || $arg0->p_lock > 0)
+	printf "L"
+	set $i = $i - 1
+    end
+    if ($arg0->p_pgrp != 0 && $arg0->p_pgrp->pg_session != 0 && \
+	$arg0->p_pgrp->pg_session->s_leader == $arg0 && $i > 0)
+	printf "s"
+	set $i = $i - 1
+    end
+    if ($arg0->p_flag & $P_CONTROLT && $i > 0)
+	printf "+"
+	set $i = $i - 1
+    end
+    if ($arg0->p_ucred != 0 && $arg0->p_ucred->cr_prison != $prison0 && $i > 0)
+	printf "J"
+	set $i = $i - 1
+    end
+    while ($i != 0)
+	printf " "
+	set $i = $i - 1
+    end
+end
+
+# dumpproc <proc>
+# ps helper to dump info about a given process
+define dumpproc
+    set $pp = $arg0.p_pptr
+    if ($pp == 0)
+	set $pp = $arg0
+    end
+    if ($arg0.p_ucred == 0)
+	set $uid = 0
+    else
+	set $uid = $arg0.p_ucred->cr_ruid
+    end
+    if ($arg0.p_pgrp == 0)
+	set $pgid = 0
+    else
+	set $pgid = $arg0.p_pgrp->pg_id
+    end
+    printf "%5d %5d %5d %5d ", $arg0.p_pid, $pp->p_pid, $pgid, $uid
+
+    printf " "
+    procstate $arg0
+    printf " "
+    set $x = $arg0.p_flag & $P_HADTHREADS
+    if ($x)
+	printf " (threaded)          %s\n", $arg0.p_comm
+    end
+
+    set $td = $arg0.p_threads.tqh_first
+    while ($td != 0)
+	dumpthread $td $x
+	set $td = $td->td_plist.tqe_next
+    end
+end
+
+define ps_header
+    printf "  pid  ppid  pgrp   uid   state   wmesg   "
+    set $foo = ($PTRWIDTH - 5) / 2
+    spaces $foo
+    printf "wchan"
+    set $foo = $PTRWIDTH - 5 - $foo
+    spaces $foo
+    printf " cmd\n"
+end
+
+# ps: equivalent of the userland command
+define ps
+    set $nproc = nprocs
+    set $p = allproc.lh_first
+    ps_header
+    while (--$nproc >= 0)
+	dumpproc $p
+	set $p = $p.p_list.le_next
+	if ($p == 0 && $nproc > 0)
+	    set $p = zombproc.lh_first
+	end
+    end
+end
+document ps
+Show process status without options. 
+end
+
+# qps: "quick" ps skips any single threaded procs that are asleep
+define qps
+    set $nproc = nprocs
+    set $p = allproc.lh_first
+    ps_header
+    while (--$nproc >= 0)
+	set $td = $p->p_threads.tqh_first
+	if ($p.p_flag & $P_HADTHREADS || $td->td_state != TDS_INHIBITED || \
+	    $td->td_inhibitors & $TDI_LOCK)
+	    dumpproc $p
+	end
+	set $p = $p.p_list.le_next
+	if ($p == 0 && $nproc > 0)
+	    set $p = zombproc.lh_first
+	end
+    end
+end
+document qps
+Show process status of non-idle processes without options. 
+end
+
+# rps: "run" ps skips any single threaded procs that are inhibited by more
+# than just being swapped out
+define rps
+    set $nproc = nprocs
+    set $p = allproc.lh_first
+    ps_header
+    while (--$nproc >= 0)
+	set $td = $p->p_threads.tqh_first
+	if ($p.p_flag & $P_HADTHREADS || $td->td_state != TDS_INHIBITED || \
+	    $td->td_inhibitors == $TDI_SWAPPED)
+	    dumpproc $p
+	end
+	set $p = $p.p_list.le_next
+	if ($p == 0 && $nproc > 0)
+	    set $p = zombproc.lh_first
+	end
+    end
+end
+document rps
+Show process status of runnable processes without options. 
+end
+
+# qqps: "really quick" ps skips any single threaded procs that are asleep or
+# on the run queue
+define qqps
+    set $nproc = nprocs
+    set $p = allproc.lh_first
+    ps_header
+    while (--$nproc >= 0)
+	set $td = $p->p_threads.tqh_first
+	if ($p.p_flag & $P_HADTHREADS || ($td->td_state != TDS_INHIBITED && \
+	    $td->td_state != TDS_RUNQ) || $td->td_inhibitors & $TDI_LOCK)
+	    dumpproc $p
+	end
+	set $p = $p.p_list.le_next
+	if ($p == 0 && $nproc > 0)
+	    set $p = zombproc.lh_first
+	end
+    end
+end
+document qqps
+Show process status of non-idle processes excluding those on the run queue. 
+end
+
+define stacks
+    set $_p = allproc.lh_first
+    printf "  PID       TID COMM             TDNAME           KSTACK\n"
+    while ($_p != 0)
+	set $_td = $_p->p_threads.tqh_first
+	while ($_td != 0)
+	    printf "%5d %9d %-19s", $_p->p_pid, $_td->td_tid, $_p->p_comm
+	    if ($osrelease >= 7)
+		if ($_td->td_name[0] != '\0')
+		    printf " %-19s", $_td->td_name
+		else
+		    printf " -                  "
+		end
+	    else
+		printf " -                  "
+	    end
+	    printf "%p - %p\n", $_td->td_kstack, $_td->td_kstack + $_td->td_kstack_pages * $PAGE_SIZE
+	    set $_td = $_td->td_plist.tqe_next
+	end
+	set $_p = $_p.p_list.le_next
+    end
+end
+document stacks
+Display thread stack bases
+end
+
+# dmesg: print msgbuf.  Can take forever.
+define dmesg
+printf "%s", msgbufp->msg_ptr
+end
+document dmesg
+Print the system message buffer (dmesg) This can take a long time due to the time it takes to transmit the data across a serial line and even on a firewire connection the processing time slows it down
+end
+
+# checkmem: check unallocated memory for modifications
+# this assumes that DIAGNOSTIC is set, which causes
+# free memory to be set to 0xdeadc0de
+#
+# Use: checkmem offset length
+define checkmem
+    set $offset = $arg0
+    # XXX sizeof int.   Needs changing for 64 bit machines.
+    # subtract 1 because the last word is always different.
+    set $length = $arg1 / 4 - 1
+    set $word = 0
+    while ($word < $length)
+	if ((int *) $offset) [$word] != 0xdeadc0de
+	    printf "invalid word 0x%x at 0x%x\n", ((int *) $offset) [$word], \
+		&((int *) $offset) [$word]
+	end
+	set $word = $word + 1
+    end
+end
+
+document checkmem
+Check unallocated memory for modifications  This assumes that DIAGNOSTIC is set which causes free memory to be set to 0xdeadc0de.
+end
+
+define kldstat
+    set $kld = linker_files.tqh_first
+    printf "Id Refs Address   "
+    set $foo = $PTRWIDTH - 9
+    spaces $foo
+    printf "Size     Name\n"
+    while ($kld != 0)
+	printf "%2d %4d 0x%08lx %-8x %s\n", \
+	    $kld->id, $kld->refs, $kld->address, $kld->size, $kld->filename
+	set $kld = $kld->link.tqe_next
+    end
+end
+ 
+document kldstat
+Lists the modules that were loaded when the kernel crashed.
+end
+ 
+define kldstat-v
+    set $kld = linker_files.tqh_first
+    printf "Id Refs Address   "
+    set $foo = $PTRWIDTH - 9
+    spaces $foo
+    printf "Size     Name\n"
+    while ($kld != 0)
+  	printf "%2d %4d 0x%0l8x %-8x %s\n", \
+	    $kld->id, $kld->refs, $kld->address, $kld->size, $kld->filename
+	printf "        Contains modules:\n"
+	printf "                Id Name\n"
+	set $module = $kld->modules.tqh_first
+	while ($module != 0)
+	    printf "                %2d %s\n", $module->id, $module->name
+	    set $module = $module->link.tqe_next
+	end
+	set $kld = $kld->link.tqe_next
+    end
+end
+
+define mtx_owner
+    if (((struct mtx *)$arg0)->mtx_lock == $MTX_UNOWNED)
+	printf "unowned\n"
+    else
+	set $td = (struct thread *)(((struct mtx *)$arg0)->mtx_lock & ~0x3)
+	printf "td: %p\n", $td
+	printf "pid: %d, p_comm: %s\n", $td->td_proc->p_pid, \
+	    $td->td_proc->p_comm
+    end
+end
+
+document mtx_owner
+Displays the owner of a given mutex
+end
+
+define lockchain
+    set $count = 20
+    lookup_thread $arg0 $td 1
+    while ($td != 0)
+	printf " thread %d (pid %d, %s) ", $td->td_tid, $td->td_proc->p_pid, \
+	    $td->td_proc->p_comm
+	if ($td->td_state == TDS_INHIBITED)
+	    if ($td->td_inhibitors & $TDI_LOCK)
+		set $ts = $td->td_blocked
+		set $lock = $ts->ts_lockobj
+		printf "blocked on lock %p \"%s\"\n", $lock, $lock->lo_name
+		set $td = $ts->ts_owner
+		if ($td == $arg0 || --$count == 0)
+		    printf " DEADLOCK\n"
+		    set $td = 0
+		end
+	    else
+		printf "inhibited\n"
+		set $td = 0
+	    end
+	else
+	    if ($td->td_state == TDS_INACTIVE)
+		printf "is inactive\n"
+	    else
+		if ($td->td_state == TDS_CAN_RUN)
+		    printf "can run\n"
+		else
+		    if ($td->td_state == TDS_RUNQ)
+			printf "is on a run queue\n"
+		    else
+			if ($td->td_state == TDS_RUNNING)
+			    printf "running on CPU %d\n", $td->td_oncpu
+			else
+			    printf "unknown state!\n"
+			end
+		    end
+		end
+	    end
+	    set $td = 0
+	end
+    end
+end
+
+document lockchain
+Displays the chain of contested locks a thread is blocked on
+end
+
+define allchains
+    set $p = allproc.lh_first
+    set $i = 1
+    while ($p != 0)
+	set $td2 = $p->p_threads.tqh_first
+	while ($td2 != 0)
+	    if ($td2->td_inhibitors & $TDI_LOCK && \
+		$td2->td_contested.lh_first == 0)
+		printf "chain %d:\n", $i
+		lockchain $td2
+		set $i = $i + 1
+	    end
+	    set $td2 = $td2->td_plist.tqe_next
+	end
+	set $p = $p->p_list.le_next
+    end
+end
+
+document allchains
+Displays all the contested lock thread chains in the system
+end
+
+define pcpu_first
+    if ($osrelease >= 9)
+	set $arg0 = cpuhead.stqh_first
+    else
+	set $arg0 = cpuhead.slh_first
+    end
+end
+
+define pcpu_next
+    if ($osrelease >= 9)
+	set $arg0 = $arg0->pc_allcpu.stqe_next
+    else
+	set $arg0 = $arg0->pc_allcpu.sle_next
+    end
+end
+
+# printpcpu <struct pcpu *>
+# helper function for pcpu and allpcpu
+define printpcpu
+    printf "cpuid        = %d\n", $arg0->pc_cpuid
+    if ($osrelease >= 8)
+	printf "domain       = %d\n", $arg0->pc_domain
+    end
+    printf "curthread    = "
+    if ($arg0->pc_curthread != 0)
+	printf "%p: pid %d \"%s\"\n", $arg0->pc_curthread, \
+	    $arg0->pc_curthread->td_proc->p_pid, \
+	    $arg0->pc_curthread->td_proc->p_comm
+    else
+	printf "none\n"
+    end
+    printf "curpcb       = %p\n", $arg0->pc_curpcb
+    printf "fpcurthread  = "
+    if ($arg0->pc_fpcurthread != 0)
+	printf "%p: pid %d \"%s\"\n", $arg0->pc_fpcurthread, \
+	    $arg0->pc_fpcurthread->td_proc->p_pid, \
+	    $arg0->pc_fpcurthread->td_proc->p_comm
+    else
+	printf "none\n"
+    end
+    printf "idlethread   = "
+    if ($arg0->pc_idlethread != 0)
+	printf "%p: pid %d \"%s\"\n", $arg0->pc_idlethread, \
+	    $arg0->pc_idlethread->td_proc->p_pid, \
+	    $arg0->pc_idlethread->td_proc->p_comm
+    else
+	printf "none\n"
+    end
+    printf "switchticks  = %lld\n", $arg0->pc_switchticks
+end
+
+define pcpu
+    pcpu_first $p
+    while ($p != 0)
+	if ($__i386__ && $p == 0xffc00000 || $p == 0xffe00000)
+	    set $p = (struct pcpu *)cpu0prvpage
+	end
+	if ($p->pc_cpuid == $arg0)
+	    printpcpu $p
+	    set $p = 0
+	else
+	    pcpu_next $p
+	end
+    end
+end
+
+document pcpu
+Display per-CPU information for a specified CPU.
+end
+
+define allpcpu
+    pcpu_first $p
+    while ($p != 0)
+	if ($__i386__ && $p == 0xffc00000 || $p == 0xffe00000)
+	    set $p = (struct pcpu *)cpu0prvpage
+	end
+	printpcpu $p
+	printf "\n"
+	pcpu_next $p
+    end
+end
+
+document allpcpu
+Display per-CPU information for all CPUs.
+end
+
+define lockmgr_owner_old7
+    if (((struct lock *)$arg0)->lk_exclusivecount != 0)
+	set $td = ((struct lock *)$arg0)->lk_lockholder
+	if ($td == $LK_KERNPROC)
+	    printf "LK_KERNPROC\n"
+	else
+	    printf "td: %p\n", $td
+	    printf "pid: %d, p_comm: %s\n", $td->td_proc->p_pid, \
+		$td->td_proc->p_comm
+	end
+    end
+    if (((struct lock *)$arg0)->lk_sharecount != 0)
+	printf "share count: %d\n", ((struct lock *)$arg0)->lk_sharecount
+    end 
+end
+
+define lockmgr_owner_new8
+    if (((struct lock *)$arg0)->lk_lock & $LK_SHARE)
+	if (((struct lock *)$arg0)->lk_lock & ~$LK_FLAGMASK != 0)
+	    printf "share count: %d\n", (((struct lock *)$arg0)->lk_lock & \
+		~$LK_FLAGMASK) >> $LK_SHARERS_SHIFT
+	end
+    else
+	if (((struct lock *)$arg0)->lk_lock & ~$LK_FLAGMASK == $LK_KERNPROC)
+	    printf "LK_KERNPROC\n"
+	else
+	    set $td = (struct thread *)(((struct lock *)$arg0)->lk_lock & \
+		~$LK_FLAGMASK)
+	    printf "td: %p\n", $td
+	    printf "pid: %d, p_comm: %s\n", $td->td_proc->p_pid, \
+		$td->td_proc->p_comm
+	end
+    end
+end
+
+define lockmgr_owner
+    if ($osrelease >= 8)
+	lockmgr_owner_new8 $arg0
+    else
+	lockmgr_owner_old7 $arg0
+    end
+end
+
+document lockmgr_owner
+Displays the owner of a given lockmgr lock
+end
+
+# vtypename <type>
+# helper function for vprint
+define vtypename
+    if ($arg0 == VNON)
+	printf "VNON"
+    else
+	if ($arg0 == VREG)
+	    printf "VREG"
+	else
+	    if ($arg0 == VDIR)
+		printf "VDIR"
+	    else
+		if ($arg0 == VBLK)
+		    printf "VBLK"
+		else
+		    if ($arg0 == VCHR)
+			printf "VCHR"
+		    else
+			if ($arg0 == VLNK)
+			    printf "VLNK"
+			else
+			    if ($arg0 == VSOCK)
+				printf "VSOCK"
+			    else
+				if ($arg0 == VFIFO)
+				    printf "VFIFO"
+				else
+				    if ($arg0 == VBAD)
+					printf "VBAD"
+				    else
+					if ($arg0 == VMARKER)
+					    printf "VMARKER"
+					else
+					    printf "V??:%d", $arg0
+					end
+				    end
+				end
+			    end
+			end
+		    end
+		end
+	    end
+	end
+    end
+end
+
+define lockmgr_printinfo_old7
+    if ($osrelease == 7)
+	set $_name = $arg0->lk_object.lo_name
+    else
+	set $_name = $arg0->lk_wmesg
+    end
+    if ($arg0->lk_sharecount)
+	printf "lock type %s: SHARED (count %d)", $_name, $arg0->lk_sharecount
+    else
+	if ($arg0->lk_exclusivecount)
+	    printf "lock type %s: EXCL (count %d) by ", $_name, \
+		$arg0->lk_exclusivecount
+	    if ($arg0->lk_lockholder == $LK_KERNPROC)
+		printf "LK_KERNPROC"
+	    else
+		printf "thread %p (pid %d)", $arg0->lk_lockholder, \
+		    $arg0->lk_lockholder->td_proc->p_pid
+	    end
+	else
+	    printf "lock type %s: UNLOCKED", $_name
+	end
+    end
+    if ($arg0->lk_waitcount > 0)
+	printf " with %d pending", $arg0->lk_waitcount
+    end
+end
+
+define lockmgr_printinfo_new8
+    if ($arg0->lk_lock == $LK_UNLOCKED)
+	printf "lock type %s: UNLOCKED", $arg0->lock_object.lo_name
+    else
+	if ($arg0->lk_lock & $LK_SHARE)
+	    printf "lock type %s: SHARED (count %d)", \
+		$arg0->lock_object.lo_name, \
+		($arg0->lk_lock & ~$LK_FLAGMASK) >> $LK_SHARERS_SHIFT
+	else
+	    printf "lock type %s: EXCL by ", $arg0->lock_object.lo_name
+	    if (($arg0->lk_lock & ~$LK_FLAGMASK) == $LK_KERNPROC)
+		printf "LK_KERNPROC"
+	    else
+		set $_td = (struct thread *)($arg0->lk_lock & ~$LK_FLAGMASK)
+		printf "thread %p (pid %d)", $_td, $_td->td_proc->p_pid
+	    end
+	end
+    end
+    if ($arg0->lk_lock & ($LK_EXCLUSIVE_SPINNERS | $LK_EXCLUSIVE_WAITERS) && \
+        $arg0->lk_lock & $LK_SHARED_WAITERS)
+        printf " with exclusive and shared waiters pending"
+    else
+	if ($arg0->lk_lock & ($LK_EXCLUSIVE_SPINNERS | $LK_EXCLUSIVE_WAITERS))
+	    printf " with exclusive waiters pending"
+	else
+	    if ($arg0->lk_lock & $LK_SHARED_WAITERS)
+		printf " with shared waiters pending"
+	    end
+	end
+    end
+end
+
+define lockmgr_printinfo
+    if ($osrelease >= 8)
+	lockmgr_printinfo_new8 $arg0
+    else
+	lockmgr_printinfo_old7 $arg0
+    end
+end
+
+# vprint <vp>
+# helper function to dump info about a vnode
+define vprint
+    set $vp = (struct vnode *)$arg0
+    printf "%p: ", $vp
+    printf "tag %s, type ", $vp->v_tag
+    vtypename $vp->v_type
+    printf "\n"
+    printf "    usecount %d, writecount %d, refcount %d mountedhere %p\n", \
+	$vp->v_usecount, $vp->v_writecount, $vp->v_holdcnt, $vp->v_un.vu_mount
+    printf "    flags ("
+    set $_comma = 0
+    print_flag $vp->v_vflag $VV_ROOT "VV_ROOT" "|"
+    print_flag $vp->v_vflag $VV_TEXT "VV_TEXT" "|"
+    print_flag $vp->v_vflag $VV_SYSTEM "VV_SYSTEM" "|"
+    print_flag $vp->v_iflag $VI_DOOMED "VI_DOOMED" "|"
+    print_flag $vp->v_iflag $VI_FREE "VI_FREE" "|"
+    printf ")"
+    if ($vp->v_interlock.mtx_lock != $MTX_UNOWNED)
+	printf " VI_LOCKed"
+    end
+    printf "\n"
+    set $_vobj = $vp->v_bufobj.bo_object
+    if ($_vobj != 0)
+	printf "    v_object %p ref %d pages %d\n", $_vobj, $_vobj->ref_count, \
+	    $_vobj->resident_page_count
+    end
+    printf "    "
+    lockmgr_printinfo $vp->v_vnlock
+    printf "\n"
+    printf "    mount %s from %s\n", $vp->v_mount->mnt_stat.f_mntonname, \
+	$vp->v_mount->mnt_stat.f_mntfromname
+    if ($vp->v_tag[0] == 'u' && $vp->v_tag[1] == 'f' && $vp->v_tag[2] == 's')
+	set $_ip = (struct inode *)$vp->v_data
+	printf "    ino %lu\n", $_ip->i_number
+    end
+    if ($vp->v_tag[0] == 'n' && $vp->v_tag[1] == 'f' && $vp->v_tag[2] == 's')
+	set $_np = (struct nfsnode *)$vp->v_data
+	printf "    fileid %ld fsid 0x%x\n", $_np->n_vattr.va_fileid, \
+	    $_np->n_vattr.va_fsid
+    end
+    if ($vp->v_type == VFIFO)
+	printf "    "
+	if ($vp->v_fifoinfo == 0)
+	    printf "NULL v_fifoinfo"
+	else
+	    printf "fifo with %ld readers and %ld writers", \
+		$vp->v_fifoinfo->fi_readers, $vp->v_fifoinfo->fi_writers
+	end
+	printf "\n"
+    end
+end
+
+define lockedvnodes
+    printf "Locked vnodes\n"
+    set $mp = mountlist.tqh_first
+    while ($mp != 0)
+	set $lvp = $mp->mnt_nvnodelist.tqh_first
+	while ($lvp != 0)
+	    if ($lvp->v_type != VMARKER)
+		if ($osrelease >= 8)
+		    if ($lvp->v_vnlock->lk_lock != $LK_UNLOCKED)
+			vprint $lvp
+		    end
+		else
+		    if ($lvp->v_vnlock->lk_exclusivecount != 0 || \
+			$lvp->v_vnlock->lk_sharecount != 0)
+			vprint $lvp
+		    end
+		end
+	    end
+	    set $lvp = $lvp->v_nmntvnodes.tqe_next
+	end
+	set $mp = $mp->mnt_list.tqe_next
+    end
+end
+
+document lockedvnodes
+List all of the locked vnodes in the system
+end
+
+define bio_cmd
+    if ($arg0 == $BIO_READ)
+	printf "BIO_READ"
+    else
+	if ($arg0 == $BIO_WRITE)
+	    printf "BIO_WRITE"
+	else
+	    if ($arg0 == $BIO_DELETE)
+		printf "BIO_DELETE"
+	    else
+		if ($arg0 == $BIO_GETATTR)
+		    printf "BIO_GETATTR"
+		else
+		    if ($arg0 == $BIO_FLUSH)
+			printf "BIO_FLUSH"
+		    else
+			printf "%#0x", $arg0
+		    end
+		end
+	    end
+	end
+    end	
+end
+
+define bprint
+    set $_bp = (struct buf *)$arg0
+    printf "%p: ", $_bp
+    bio_cmd $_bp->b_iocmd
+    printf " flags ("
+    set $_comma = 0
+    print_flag $_bp->b_flags $B_AGE "AGE" "|"
+    print_flag $_bp->b_flags $B_NEEDCOMMIT "NEEDCOMMIT" "|"
+    print_flag $_bp->b_flags $B_ASYNC "ASYNC" "|"
+    print_flag $_bp->b_flags $B_DIRECT "DIRECT" "|"
+    print_flag $_bp->b_flags $B_DEFERRED "DEFERRED" "|"
+    print_flag $_bp->b_flags $B_CACHE "CACHE" "|"
+    print_flag $_bp->b_flags $B_VALIDSUSPWRT "VALIDSUSPWRT" "|"
+    print_flag $_bp->b_flags $B_DELWRI "DELWRI" "|"
+    print_flag $_bp->b_flags $B_PERSISTENT "PERSISTENT" "|"
+    print_flag $_bp->b_flags $B_DONE "DONE" "|"
+    print_flag $_bp->b_flags $B_EINTR "EINTR" "|"
+    print_flag $_bp->b_flags $B_INVAL "INVAL" "|"
+    print_flag $_bp->b_flags $B_NOCACHE "NOCACHE" "|"
+    print_flag $_bp->b_flags $B_MALLOC "MALLOC" "|"
+    print_flag $_bp->b_flags $B_CLUSTEROK "CLUSTEROK" "|"
+    print_flag $_bp->b_flags $B_DIRTY "DIRTY" "|"
+    print_flag $_bp->b_flags $B_RELBUF "RELBUF" "|"
+    print_flag $_bp->b_flags $B_NEEDSGIANT "NEEDSGIANT" "|"
+    print_flag $_bp->b_flags $B_PAGING "PAGING" "|"
+    print_flag $_bp->b_flags $B_MANAGED "MANAGED" "|"
+    print_flag $_bp->b_flags $B_RAM "RAM" "|"
+    print_flag $_bp->b_flags $B_VMIO "VMIO" "|"
+    print_flag $_bp->b_flags $B_CLUSTER "CLUSTER" "|"
+    print_flag $_bp->b_flags $B_REMFREE "REMFREE" "|"
+    printf ")\n"
+    printf "error = %d, bufsize = %ld, bcount = %ld, b_resid = %ld\n", \
+	$_bp->b_error, $_bp->b_bufsize, $_bp->b_bcount, $_bp->b_resid
+    printf "bufobj = %p, data = %p, blkno = %jd, dep = %p\n", \
+	$_bp->b_bufobj, $_bp->b_data, $_bp->b_blkno, $_bp->b_dep.lh_first
+    printf " "
+    lockmgr_printinfo $_bp->b_lock
+    printf "\n"
+end
+
+document bprint
+Display information about a buf
+end
+
+define lock_class
+    if ($osrelease < 7)
+	set $arg1 = $arg0->lo_class
+    else
+	set $arg1 = lock_classes[($arg0->lo_flags & $LO_CLASSMASK) >> \
+	    $LO_CLASSSHIFT]
+    end
+end
+
+# helper functions for sleepchain, return success or failure in $arg1 and
+# if ok, owner in $arg2, $arg0 is thread
+define lk_chain_old6
+    set $lkp = (struct lock *)$arg0->td_wchan
+    # imperfect test to see if the wchan is a lockmgr lock maybe
+    if ($lkp->lk_wmesg != $arg0->td_wmesg)
+	# it might be sleeping on &lkp->lk_flags during a drain
+	set $lkp = (struct lock *)((char *)$lkp - \
+	    (int)(&((struct lock *)0)->lk_flags))
+	if ($lkp->lk_wmesg != $arg0->td_wmesg || \
+	    !($lkp->lk_flags & $LK_WAITDRAIN))
+	    set $lkp = 0
+	end
+    end
+    if ($lkp)
+	set $arg1 = 1
+	printf "blocked on lk \"%s\" ", $lkp->lk_wmesg
+	if ($lkp->lk_sharecount)
+	    printf "SHARED (count %d)", $lkp->lk_sharecount
+	    set $arg2 = 0
+	else
+	    printf "EXCL (count %d)", $lkp->lk_exclusivecount
+	    if ($lkp->lk_lockholder == $LK_KERNPROC)
+		printf "\n LK_KERNPROC"
+		set $arg2 = 0
+	    else
+		set $arg2 = $lkp->lk_lockholder
+	    end
+	end
+    else
+	set $arg1 = 0
+    end
+end
+
+define lk_chain_old7
+    set $lkp = (struct lock *)$arg0->td_wchan
+    lock_class (&$lkp->lk_object) $_lc
+    if ($_lc != &lock_class_lockmgr)
+	set $arg1 = 0
+    else
+	set $arg1 = 1
+	printf "blocked on lk \"%s\" ", $lkp->lk_object.lo_name
+	if ($lkp->lk_sharecount)
+	    printf "SHARED (count %d)", $lkp->lk_sharecount
+	    set $arg2 = 0
+	else
+	    printf "EXCL (count %d)", $lkp->lk_exclusivecount
+	    if ($lkp->lk_lockholder == $LK_KERNPROC)
+		printf "\n LK_KERNPROC"
+		set $arg2 = 0
+	    else
+		set $arg2 = $lkp->lk_lockholder
+	    end
+	end
+    end
+end
+
+define lk_chain_new8
+    set $lk = (struct lock *)$arg0->td_wchan
+    lock_class (&$lk->lock_object) $_lc
+    if ($_lc != &lock_class_lockmgr)
+	set $arg1 = 0
+    else
+	set $arg1 = 1
+	printf "blocked on lk \"%s\" ", $arg0->td_wmesg
+	if ($lk->lk_lock & $LK_SHARE)
+	    printf "SHARED (count %d)", ($lk->lk_lock & ~$LK_FLAGMASK) >> \
+		$LK_SHARERS_SHIFT
+	    set $arg2 = 0
+	else
+	    printf "EXCL"
+	    if ($lk->lk_lock == $LK_KERNPROC)
+		printf "\n LK_KERNPROC"
+		set $arg2 = 0
+	    else
+		set $arg2 = (struct thread *)($lk->lk_lock & ~$LK_FLAGMASK)
+	    end
+	end
+    end
+end
+
+define lk_chain
+    if ($osrelease >= 8)
+	lk_chain_new8 $arg0 $arg1 $arg2
+    else
+	if ($osrelease == 7)
+	    lk_chain_old7 $arg0 $arg1 $arg2
+	else
+	    lk_chain_old6 $arg0 $arg1 $arg2
+	end
+    end
+end
+
+define sx_chain_old6
+    set $cv = (struct cv *)$arg0->td_wchan
+    if ($cv->cv_description == $arg0->td_wmesg)
+	set $sx = (struct sx *)((char *)$cv - \
+	    (int)(&((struct sx *)0)->sx_excl_cv))
+	if ($sx->sx_object.lo_class != &lock_class_sx || $sx->sx_excl_wcnt == 0)
+	    set $sx = (struct sx *)((char *)$cv - \
+		(int)(&((struct sx *)0)->sx_shrd_cv))
+	    if ($sx->sx_object.lo_class != &lock_class_sx || \
+		$sx->sx_shrd_wcnt == 0)
+		set $sx = 0
+	    end
+	end
+	if ($sx)
+	    set $arg1 = 1
+	    printf "blocked on sx \"%s\" ", $arg0->td_wmesg
+	    if ($sx->sx_cnt >= 0)
+		printf "SLOCK (count %d)", $sx->sx_cnt
+		set $arg2 = 0
+	    else
+		printf "XLOCK"
+		set $arg2 = $sx->sx_xholder
+	    end
+	else
+	    set $arg1 = 0
+	end
+    else
+	set $arg1 = 0
+    end
+end
+
+define sx_chain_new6
+    set $sx = (struct sx *)$arg0->td_wchan
+    lock_class (&$sx->lock_object) $_lc
+    if ($_lc != &lock_class_sx || $sx->lock_object.lo_name != $arg0->td_wmesg)
+	set $arg1 = 0
+    else
+	set $arg1 = 1
+	printf "blocked on sx \"%s\" ", $arg0->td_wmesg
+	if ($sx->sx_lock & $SX_LOCK_SHARED)
+	    printf "SLOCK (count %d)", ($sx->sx_lock & ~$SX_LOCK_FLAGMASK) >> \
+		$SX_SHARERS_SHIFT
+	    set $arg2 = 0
+	else
+	    printf "XLOCK"
+	    set $arg2 = (struct thread *)($sx->sx_lock & ~$SX_LOCK_FLAGMASK)
+	end
+    end
+end
+
+define sx_chain
+    if (osreldate < 603000)
+	sx_chain_old6 $arg0 $arg1 $arg2
+    else
+	sx_chain_new6 $arg0 $arg1 $arg2
+    end
+end
+
+define sleepchain
+    set $count = 20
+    lookup_thread $arg0 $td 1
+    while ($td != 0)
+	if ($td->td_wchan != 0)
+	    printf " thread %d (pid %d, %s) ", $td->td_tid, \
+		$td->td_proc->p_pid, $td->td_proc->p_comm
+	    sx_chain $td $ok $owner
+	    if ($ok == 0)
+		lk_chain $td $ok $owner
+	    end
+	    if ($ok != 0)
+		set $td = $owner
+		if ($td == $arg0 || --$count == 0)
+		    printf "\n DEADLOCK"
+		    set $td = 0
+		end
+	    else
+		printf "non-lock sleep"
+		set $td = 0
+	    end
+	    printf "\n"
+	else
+	    lockchain $td
+	    set $td = 0
+	end
+    end	
+end
+
+document sleepchain
+Like lockchain but for sleep locks
+end
+
+# sysctl_oid name namelen
+def sysctl_oid
+    set $oid = sysctl__children.slh_first
+    set $index = 0
+    while ($oid != 0 && $index < $arg1)
+	if ($oid->oid_number == $arg0[$index])
+	    set $index = $index + 1
+	    printf "%6d: %s\n", $oid->oid_number, $oid->oid_name
+	    if (($oid->oid_kind & $CTLTYPE) == $CTLTYPE_NODE)
+		if ($oid->oid_handler != 0)
+		    set $oid = 0
+		else
+		    set $oid = ((struct sysctl_oid_list *)$oid->oid_arg1)->slh_first
+		end
+	    else
+		set $oid = 0
+	    end
+	else
+	    set $oid = $oid->oid_link.sle_next
+	end
+    end
+end
+
+document sysctl_oid
+Try to lookup the name of a sysctl OID.
+end
+
+# sysctl_nodes list
+def sysctl_nodes
+    if ($arg0 == 0)
+	set $oid = sysctl__children.slh_first
+    else
+	set $oid = ((struct sysctl_oid_list *)((struct sysctl_oid *)$arg0)->oid_arg1)->slh_first
+    end
+    while ($oid != 0)
+	printf "%6d: (%p) %s\n", $oid->oid_number, $oid, $oid->oid_name
+	set $oid = $oid->oid_link.sle_next
+    end
+end
+
+document sysctl_nodes
+List the immediate children of a sysctl node.  Use a node of '0' to start
+from the top of the tree.
+end
+
+def memstat
+    printf "%8d K Active (%2d%c)\n", cnt.v_active_count * cnt.v_page_size / \
+	1024, cnt.v_active_count * 100 / cnt.v_page_count, '%'
+    printf "%8d K Inact  (%2d%c)\n", cnt.v_inactive_count * cnt.v_page_size / \
+	1024, cnt.v_inactive_count * 100 / cnt.v_page_count, '%'
+    printf "%8d K Wired  (%2d%c)\n", cnt.v_wire_count * cnt.v_page_size / \
+	1024, cnt.v_wire_count * 100 / cnt.v_page_count, '%'
+    printf "%8d K Cache  (%2d%c)\n", cnt.v_cache_count * cnt.v_page_size / \
+	1024, cnt.v_cache_count * 100 / cnt.v_page_count, '%'
+    printf "%8d K Buf\n", bufspace / 1024
+    printf "%8d K Free   (%2d%c)\n", cnt.v_free_count * cnt.v_page_size / \
+	1024, cnt.v_free_count * 100 / cnt.v_page_count, '%'
+end
+
+document memstat
+Show top-like memory usage summary
+end
+
+set $BLIST_META_RADIX = 16
+set $BLIST_BMAP_RADIX = (sizeof(u_daddr_t)*8)
+
+# Evil nested versions of blst_radix_print to allow for "recursion" as a
+# workaround for the lack of local variables in gdb.
+def blst_radix_print_6
+    spaces $arg4
+    printf "(%08llx,%lld): ", $arg1, $arg2
+    if ($arg2 == $BLIST_BMAP_RADIX)
+	printf "bitmap %08llx big=%lld\n", $arg0->u.bmu_bitmap, \
+	    $arg0->bm_bighint
+    else
+	if ($arg0->u.bmu_avail == 0)
+	    printf "ALL ALLOCATED\n"
+	else
+	    if ($arg0->u.bmu_avail == $arg2)
+		printf "ALL FREE\n"
+	    else
+		printf "subtree (%lld/%lld) big=%lld {\n", $arg0->u.bmu_avail, \
+		    $arg2, $arg0->bm_bighint
+		spaces $arg4
+		printf "}\n"
+	    end
+	end
+    end
+end
+
+def blst_radix_print_5
+    spaces $arg4
+    printf "(%08llx,%lld): ", $arg1, $arg2
+    if ($arg2 == $BLIST_BMAP_RADIX)
+	printf "bitmap %08llx big=%lld\n", $arg0->u.bmu_bitmap, \
+	    $arg0->bm_bighint
+    else
+	if ($arg0->u.bmu_avail == 0)
+	    printf "ALL ALLOCATED\n"
+	else
+	    if ($arg0->u.bmu_avail == $arg2)
+		printf "ALL FREE\n"
+	    else
+		printf "subtree (%lld/%lld) big=%lld {\n", $arg0->u.bmu_avail, \
+		    $arg2, $arg0->bm_bighint
+		set $______radix = $arg2 / $BLIST_META_RADIX
+		set $______next_skip = (u_int)$arg3 / $BLIST_META_RADIX
+		set $______tab = $arg4 + 4
+		set $______blk = $arg2
+		set $______skip = $______next_skip - 1
+		set $______i = 1
+		while ($______i < $arg3)
+		    if ($arg0[$______i].bm_bighint == (daddr_t)-1)
+			spaces $______tab
+			printf "(%08llx,%lld): ", $______blk, $______radix
+			printf "Terminator\n"
+			set $______i = $arg3
+		    else
+			set $______scan = &$arg0[$______i]
+			blst_radix_print_6 $______scan $______blk $______radix \
+			    $______skip $______tab
+			set $______blk = $______blk + $______radix
+			set $______i = $______i + $______next_skip
+		    end
+		end
+		spaces $arg4
+		printf "}\n"
+	    end
+	end
+    end
+end
+
+def blst_radix_print_4
+    spaces $arg4
+    printf "(%08llx,%lld): ", $arg1, $arg2
+    if ($arg2 == $BLIST_BMAP_RADIX)
+	printf "bitmap %08llx big=%lld\n", $arg0->u.bmu_bitmap, \
+	    $arg0->bm_bighint
+    else
+	if ($arg0->u.bmu_avail == 0)
+	    printf "ALL ALLOCATED\n"
+	else
+	    if ($arg0->u.bmu_avail == $arg2)
+		printf "ALL FREE\n"
+	    else
+		printf "subtree (%lld/%lld) big=%lld {\n", $arg0->u.bmu_avail, \
+		    $arg2, $arg0->bm_bighint
+		set $_____radix = $arg2 / $BLIST_META_RADIX
+		set $_____next_skip = (u_int)$arg3 / $BLIST_META_RADIX
+		set $_____tab = $arg4 + 4
+		set $_____blk = $arg2
+		set $_____skip = $_____next_skip - 1
+		set $_____i = 1
+		while ($_____i < $arg3)
+		    if ($arg0[$_____i].bm_bighint == (daddr_t)-1)
+			spaces $_____tab
+			printf "(%08llx,%lld): ", $_____blk, $_____radix
+			printf "Terminator\n"
+			set $_____i = $arg3
+		    else
+			set $_____scan = &$arg0[$_____i]
+			blst_radix_print_5 $_____scan $_____blk $_____radix \
+			    $_____skip $_____tab
+			set $_____blk = $_____blk + $_____radix
+			set $_____i = $_____i + $_____next_skip
+		    end
+		end
+		spaces $arg4
+		printf "}\n"
+	    end
+	end
+    end
+end
+
+def blst_radix_print_3
+    spaces $arg4
+    printf "(%08llx,%lld): ", $arg1, $arg2
+    if ($arg2 == $BLIST_BMAP_RADIX)
+	printf "bitmap %08llx big=%lld\n", $arg0->u.bmu_bitmap, \
+	    $arg0->bm_bighint
+    else
+	if ($arg0->u.bmu_avail == 0)
+	    printf "ALL ALLOCATED\n"
+	else
+	    if ($arg0->u.bmu_avail == $arg2)
+		printf "ALL FREE\n"
+	    else
+		printf "subtree (%lld/%lld) big=%lld {\n", $arg0->u.bmu_avail, \
+		    $arg2, $arg0->bm_bighint
+		set $____radix = $arg2 / $BLIST_META_RADIX
+		set $____next_skip = (u_int)$arg3 / $BLIST_META_RADIX
+		set $____tab = $arg4 + 4
+		set $____blk = $arg2
+		set $____skip = $____next_skip - 1
+		set $____i = 1
+		while ($____i < $arg3)
+		    if ($arg0[$____i].bm_bighint == (daddr_t)-1)
+			spaces $____tab
+			printf "(%08llx,%lld): ", $____blk, $____radix
+			printf "Terminator\n"
+			set $____i = $arg3
+		    else
+			set $____scan = &$arg0[$____i]
+			blst_radix_print_4 $____scan $____blk $____radix \
+			    $____skip $____tab
+			set $____blk = $____blk + $____radix
+			set $____i = $____i + $____next_skip
+		    end
+		end
+		spaces $arg4
+		printf "}\n"
+	    end
+	end
+    end
+end
+
+def blst_radix_print_2
+    spaces $arg4
+    printf "(%08llx,%lld): ", $arg1, $arg2
+    if ($arg2 == $BLIST_BMAP_RADIX)
+	printf "bitmap %08llx big=%lld\n", $arg0->u.bmu_bitmap, \
+	    $arg0->bm_bighint
+    else
+	if ($arg0->u.bmu_avail == 0)
+	    printf "ALL ALLOCATED\n"
+	else
+	    if ($arg0->u.bmu_avail == $arg2)
+		printf "ALL FREE\n"
+	    else
+		printf "subtree (%lld/%lld) big=%lld {\n", $arg0->u.bmu_avail, \
+		    $arg2, $arg0->bm_bighint
+		set $___radix = $arg2 / $BLIST_META_RADIX
+		set $___next_skip = (u_int)$arg3 / $BLIST_META_RADIX
+		set $___tab = $arg4 + 4
+		set $___blk = $arg2
+		set $___skip = $___next_skip - 1
+		set $___i = 1
+		while ($___i < $arg3)
+		    if ($arg0[$___i].bm_bighint == (daddr_t)-1)
+			spaces $___tab
+			printf "(%08llx,%lld): ", $___blk, $___radix
+			printf "Terminator\n"
+			set $___i = $arg3
+		    else
+			set $___scan = &$arg0[$___i]
+			blst_radix_print_3 $___scan $___blk $___radix $___skip \
+			    $___tab
+			set $___blk = $___blk + $___radix
+			set $___i = $___i + $___next_skip
+		    end
+		end
+		spaces $arg4
+		printf "}\n"
+	    end
+	end
+    end
+end
+
+def blst_radix_print_1
+    spaces $arg4
+    printf "(%08llx,%lld): ", $arg1, $arg2
+    if ($arg2 == $BLIST_BMAP_RADIX)
+	printf "bitmap %08llx big=%lld\n", $arg0->u.bmu_bitmap, \
+	    $arg0->bm_bighint
+    else
+	if ($arg0->u.bmu_avail == 0)
+	    printf "ALL ALLOCATED\n"
+	else
+	    if ($arg0->u.bmu_avail == $arg2)
+		printf "ALL FREE\n"
+	    else
+		printf "subtree (%lld/%lld) big=%lld {\n", $arg0->u.bmu_avail, \
+		    $arg2, $arg0->bm_bighint
+		set $__radix = $arg2 / $BLIST_META_RADIX
+		set $__next_skip = (u_int)$arg3 / $BLIST_META_RADIX
+		set $__tab = $arg4 + 4
+		set $__blk = $arg2
+		set $__skip = $__next_skip - 1
+		set $__i = 1
+		while ($__i < $arg3)
+		    if ($arg0[$__i].bm_bighint == (daddr_t)-1)
+			spaces $__tab
+			printf "(%08llx,%lld): ", $__blk, $__radix
+			printf "Terminator\n"
+			set $__i = $arg3
+		    else
+			set $__scan = &$arg0[$__i]
+			blst_radix_print_2 $__scan $__blk $__radix $__skip \
+			    $__tab
+			set $__blk = $__blk + $__radix
+			set $__i = $__i + $__next_skip
+		    end
+		end
+		spaces $arg4
+		printf "}\n"
+	    end
+	end
+    end
+end
+
+# $arg0 - scan
+# $arg1 - blk
+# $arg2 - radix
+# $arg3 - skip
+# $arg4 - tab
+def blst_radix_print
+    spaces $arg4
+    printf "(%08llx,%lld): ", $arg1, $arg2
+    if ($arg2 == $BLIST_BMAP_RADIX)
+	printf "bitmap %08llx big=%lld\n", $arg0->u.bmu_bitmap, \
+	    $arg0->bm_bighint
+    else
+	if ($arg0->u.bmu_avail == 0)
+	    printf "ALL ALLOCATED\n"
+	else
+	    if ($arg0->u.bmu_avail == $arg2)
+		printf "ALL FREE\n"
+	    else
+		printf "subtree (%lld/%lld) big=%lld {\n", $arg0->u.bmu_avail, \
+		    $arg2, $arg0->bm_bighint
+		set $_radix = $arg2 / $BLIST_META_RADIX
+		set $_next_skip = (u_int)$arg3 / $BLIST_META_RADIX
+		set $_tab = $arg4 + 4
+		set $_blk = $arg2
+		set $_skip = $_next_skip - 1
+		set $_i = 1
+		while ($_i < $arg3)
+		    if ($arg0[$_i].bm_bighint == (daddr_t)-1)
+			spaces $_tab
+			printf "(%08llx,%lld): ", $_blk, $_radix
+			printf "Terminator\n"
+			set $_i = $arg3
+		    else
+			set $_scan = &$arg0[$_i]
+			blst_radix_print_1 $_scan $_blk $_radix $_skip $_tab
+			set $_blk = $_blk + $_radix
+			set $_i = $_i + $_next_skip
+		    end
+		end
+		spaces $arg4
+		printf "}\n"
+	    end
+	end
+    end
+end
+
+def blist
+    printf "BLIST {\n"
+    blst_radix_print $arg0->bl_root 0 $arg0->bl_radix $arg0->bl_skip 4
+    printf "}\n"
+end
+
+def blists
+    set $swp = swtailq.tqh_first
+    while ($swp != 0)
+	if ($swp->sw_dev == 0)
+	    printf "%-15s ", "<NFSfile>"
+	else
+	    printf "/dev/%-10s ", $swp->sw_vp->v_un.vu_cdev->si_name
+	end
+    	blist $swp->sw_blist
+	set $swp = $swp->sw_list.tqe_next
+    end
+end
+
+def swapinfo
+    printf "Device          1K-blocks     Used    Avail Capacity\n"
+    set $swp = swtailq.tqh_first
+    while ($swp != 0)
+	if ($swp->sw_dev == 0)
+	    printf "%-15s", "<NFSfile>"
+	else
+	    printf "/dev/%-10s", $swp->sw_vp->v_un.vu_cdev->si_name
+	end
+	printf " %9u", $swp->sw_nblks * (4096 / 1024)
+	printf " %8u", $swp->sw_used * (4096 / 1024)
+	printf " %8u", ($swp->sw_nblks - $swp->sw_used) * (4096 / 1024)
+	printf " %5.0f%c\n", ($swp->sw_used * 100.0 ) / $swp->sw_nblks, '%'
+	set $swp = $swp->sw_list.tqe_next
+    end
+end
+
+document swapinfo
+Output similar to swapinfo(8)
+end
+
+define devstate
+    if ($arg0->state == DS_NOTPRESENT)
+	printf "NOT PRESENT"
+    else
+	if ($arg0->state == DS_ALIVE)
+	    printf "ALIVE      "
+	else
+	    if ($arg0->state == DS_ATTACHED)
+		printf "ATTACHED   "
+	    else
+		if ($arg0->state == DS_BUSY)
+		    printf "BUSY: %-5d", $arg0->busy
+		else
+		    printf "???: %-6d", $arg0->state
+		end
+	    end
+	end
+    end
+end
+
+# List device info as <name:20> <state:11> <softc> <ivars>
+define lsdev
+    printf "        name            state    "
+    set $foo = ($PTRWIDTH - 5) / 2
+    set $bar = $PTRWIDTH - 5 - $foo
+    spaces $foo
+    printf "softc"
+    spaces $bar
+    printf " "
+    spaces $foo
+    printf "ivars\n"
+    set $foo = $PTRWIDTH - 4
+    set $dev = bus_data_devices->tqh_first
+    while ($dev != 0)
+	if ($dev->nameunit)
+	    printf "%-20s ", $dev->nameunit
+	else
+	    printf "(null)               "
+	end
+	devstate $dev
+	if ($dev->softc)
+	    printf " %p", $dev->softc
+	else
+	    printf " NULL"
+	    spaces $foo
+	end
+	if ($dev->ivars)
+	    printf " %p", $dev->ivars
+	else
+	    printf " NULL"
+	    spaces $foo
+	end
+	printf "\n"
+	set $dev = $dev->devlink.tqe_next
+    end
+end
+
+document lsdev
+Show new-bus devices.
+end
+
+# Show the new-bus device tree
+define devinfo
+    set $indent = 0
+    set $dev = root_bus
+    set $ignore = 0
+    while ($dev != 0)
+	if ($dev->nameunit != 0 && $ignore == 0)
+	    spaces $indent
+	    printf "%s %p (%p)\n", $dev->nameunit, $dev, $dev->softc
+	end
+	if ($dev->children.tqh_first != 0 && $ignore == 0)
+	    set $dev = $dev->children.tqh_first
+	    set $indent = $indent + 1
+	    set $ignore = 0
+	else
+	    if ($dev->link.tqe_next != 0)
+		set $dev = $dev->link.tqe_next
+		set $ignore = 0
+	    else
+		set $indent = $indent - 1
+		set $dev = $dev->parent
+		set $ignore = 1
+	    end
+	end
+    end
+end
+
+document devinfo
+Show new-bus heirarchy similar to devinfo(8).
+end
+
+# Pring a single mbuf
+define dumpmbuf
+    printf "%p: %d bytes", $arg0, $arg0->m_hdr.mh_len
+    if ($arg0->m_hdr.mh_flags & $M_EXT)
+	printf " ext %p", $arg0->M_dat.MH.MH_dat.MH_ext.ext_buf
+    end
+    if ($arg0->m_hdr.mh_flags & $M_PKTHDR)
+	set $h = $arg0->M_dat.MH.MH_pkthdr
+	printf " packet: %d bytes", $h.len
+	if ($h.rcvif != 0)
+	    printf " received via %s", $h.rcvif->if_xname
+	end
+    end
+    printf "\n"
+end
+
+# Dump an mbuf chain
+define mbuf
+    set $m = (struct mbuf *)$arg0
+    while ($m != 0)
+	dumpmbuf $m
+	set $m = $m->m_hdr.mh_next
+    end
+end
+
+document mbuf
+Display all the mbufs in an mbuf chain.
+end
+
+# Dump a list of packets
+define packets
+    set $mp = (struct mbuf *)$arg0
+    while ($mp != 0)
+	printf "chain %p:\n", $mp
+	set $m = $mp
+	while ($m != 0)
+		printf "  "
+	 	dumpmbuf $m
+		set $m = $m->m_hdr.mh_next
+	end
+	set $mp = $mp->m_hdr.mh_nextpkt
+    end
+end
+
+document packets
+Display all the mbuf chains in a list of packets.
+end
+
+define eth
+    set $_eth = (struct ether_header *)$arg0
+    printf "src: "
+    print_ether_addr $_eth->ether_shost
+    printf "  dst: "
+    print_ether_addr $_eth->ether_dhost
+    printf "  type: %04x\n", $_eth->ether_type
+end
+
+document eth
+Display an Ethernet header
+end
+
+define semu_list
+    set $sem = semu_list->slh_first
+    while ($sem != 0)
+	printf "pid %5d: %08llx\n", $sem->un_proc->p_pid, $sem
+	set $sem = $sem->un_next.sle_next
+    end
+end
+
+set $DTYPE_VNODE = 1
+set $DTYPE_SOCKET = 2
+set $DTYPE_PIPE = 3
+set $DTYPE_FIFO = 4
+set $DTYPE_KQUEUE = 5
+set $DTYPE_CRYPTO = 6
+set $DTYPE_MQUEUE = 7
+set $DTYPE_SHM = 8
+set $DTYPE_SEM = 9
+set $DTYPE_PTS = 10
+
+define file_type
+    if ($arg0->f_type == 0)
+	printf "zero  "
+    else
+	if ($arg0->f_type == $DTYPE_VNODE)
+	    printf "vnode "
+	else
+	    if ($arg0->f_type == $DTYPE_SOCKET)
+		printf "socket"
+	    else
+		if ($arg0->f_type == $DTYPE_PIPE)
+		    printf "pipe  "
+		else
+		    if ($arg0->f_type == $DTYPE_FIFO)
+			printf "fifo  "
+		    else
+			if ($arg0->f_type == $DTYPE_KQUEUE)
+			    printf "kqueue"
+			else
+			    if ($arg0->f_type == $DTYPE_CRYPTO)
+				printf "crypto"
+			    else
+				if ($arg0->f_type == $DTYPE_MQUEUE)
+				    printf "mqueue"
+				else
+				    if ($arg0->f_type == $DTYPE_SHM)
+					printf "psxshm"
+				    else
+					if ($arg0->f_type == $DTYPE_SEM)
+					    printf "psxsem"
+					else
+					    if ($arg0->f_type == $DTYPE_PTS)
+						printf "pts   "
+					    else
+						printf "???   "
+					    end
+					end
+				    end
+				end
+			    end
+			end
+		    end
+		end
+	    end
+	end
+    end
+end
+
+define file_header
+    set $foo = ($PTRWIDTH - 4) / 2
+    spaces $foo
+    printf "File"
+    set $foo = $PTRWIDTH - 4 - $foo
+    spaces $foo
+    printf "  Type  "
+    set $foo = ($PTRWIDTH - 4) / 2
+    spaces $foo
+    printf "Data"
+    set $foo = $PTRWIDTH - 4 - $foo
+    spaces $foo
+    printf "  Flags   Count Vnode\n"
+end
+
+define print_file
+    printf "%p ", $arg0
+    file_type $arg0
+    if ($arg0->f_data == 0)
+	set $foo = $PTRWIDTH - 3
+	space $foo
+    end
+    printf " %p %08x %5d %p\n", $arg0->f_data, $arg0->f_flag, \
+	$arg0->f_count, $arg0->f_vnode
+end
+
+define file
+    set $_fp = (struct file *)$arg0
+    file_header
+    print_file $_fp
+end
+
+document file
+Display details about a file descriptor.
+end
+
+define fdp
+    lookup_proc $arg0 $p
+    if ($p->p_fd == 0)
+	printf "pid %d has no files\n", $p->p_pid
+    else
+	printf "Index "
+	file_header
+	set $_n = 0
+	while ($_n < $p->p_fd->fd_nfiles)
+	    set $_fp = $p->p_fd->fd_ofiles[$_n]
+	    if ($_fp)
+		printf "%5d ", $_n
+		print_file $_fp
+	    end
+	    set $_n = $_n + 1
+	end
+    end
+end
+
+document fdp
+Display the open files for a given process.
+end
+
+# Checks to see if a file ($arg0) is opened by a process ($arg1) returns a
+# boolean ($arg2)
+define file_belongs_to_proc
+    set $arg2 = 0
+    set $_n = 0
+    if ($arg1 != 0 && $arg1->p_fd != 0)
+	while ($_n < $arg1->p_fd->fd_nfiles && $arg2 == 0)
+	    if ($arg1->p_fd->fd_ofiles[$_n] == $arg0)
+		set $arg2 = 1
+	    end
+	    set $_n = $_n + 1
+	end
+    end
+end
+
+# Looks for a process (returned in $arg1) that has an open descriptor for the
+# file in $arg0
+define file_to_first_proc
+    set $arg1 = 0
+    set $_p = allproc.lh_first
+    while ($_p != 0 && $arg1 == 0)
+	file_belongs_to_proc $arg0 $_p $_belongs
+	if ($_belongs)
+	    set $arg1 = $_p
+	end
+	set $_p = $_p.p_list.le_next
+    end
+end
+
+# We "optimize" by trying to reuse the process from the last file before
+# searching the entire process list for the first process for a given file.
+define files
+    printf " PID    Command    "
+    file_header
+    set $_fp = filehead.lh_first
+    set $_p2 = (struct proc *)0
+    while ($_fp != 0)
+	file_belongs_to_proc $_fp $_p2 $_belongs
+	if ($_belongs == 0)
+	    file_to_first_proc $_fp $_p2
+	end
+	if ($_p2 == 0)
+	    printf "%5d -            ", -1
+	else
+	    printf "%5d %12s ", $_p2->p_pid, $_p2->p_comm
+	end
+	print_file $_fp
+	set $_fp = $_fp->f_list.le_next
+    end
+end
+
+document files
+Display all the file descriptors.
+end
+
+define file_procs
+    set $_fp = (struct file *)$arg0
+    printf "Processes with file %p open:\n", $_fp
+    ps_header
+    set $_p = allproc.lh_first
+    while ($_p != 0)
+	file_belongs_to_proc $_fp $_p $_belongs
+	if ($_belongs)
+	    dumpproc $_p
+	end
+	set $_p = $_p.p_list.le_next
+    end
+end
+
+document file_procs
+Find all processes that have a descriptor for a given file.
+end
+
+define vnode_files
+    file_header
+    set $_fp = filehead.lh_first
+    while ($_fp != 0)
+	if ($_fp->f_vnode == $arg0)
+	    print_file $_fp
+	end
+	set $_fp = $_fp->f_list.le_next
+    end
+end
+
+document vnode_files
+Find all file objects that reference a vnode.
+end
+
+define uptime
+    set $s = timehands->th_offset.sec
+    set $f = 0
+    printf "Uptime: "
+    if ($s >= 86400)
+	printf "%ldd", $s / 86400
+	set $s = $s % 86400
+	set $f = 1
+    end
+    if ($f || $s >= 3600)
+	printf "%ldh", $s / 3600
+	set $s = $s % 3600
+	set $f = 1
+    end
+    if ($f || $s >= 60)
+	printf "%ldm", $s / 60
+	set $s = $s % 60
+	set $f = 1
+    end
+    printf "%lds\n", $s
+end
+
+define walltime
+    set $s = timehands->th_offset.sec + boottimebin.sec
+    printf "Time_t: %ld\n", $s
+    printf "UTC Date: "
+    if ($s >= 86400)
+	printf "%ld days ", $s / 86400
+	set $s = $s % 86400
+    end
+    printf "%02ld:", $s / 3600
+    set $s = $s % 3600
+    printf "%02ld:", $s / 60
+    set $s = $s % 60
+    printf "%02ld\n", $s
+end
+
+set $RQ_NQS = 64
+
+# $arg0 - 'struct runq *'
+# $arg1 - a CPU if >= 0
+define runq
+    set $runq = $arg0
+    set $i = 0
+    while ($i < $RQ_NQS)
+	if ($runq->rq_queues[$i].tqh_first != 0)
+	    set $first = 1
+	    set $kse = $runq->rq_queues[$i].tqh_first
+	    while ($kse != 0)
+		if ($first)
+		    if ($arg1 >= 0)
+			printf "%2d:%2d ", $arg1, $i
+		    else
+			printf "   %2d ", $i
+		    end
+		    set $first = 0
+		else
+		    printf "      "
+		end
+		if ($osrelease >= 8)
+		    set $td = $kse
+		else
+		    if ($osrelease == 7)
+			set $td = $kse->ts_thread
+		    else
+			set $td = $kse->ke_thread
+		    end
+		end
+		printf "%3d %9d %5d ", (u_int)$td->td_priority, $td->td_tid, \
+		    $td->td_proc->p_pid
+		if ($td->td_proc->p_flag & $P_SYSTEM)
+		    printf "["
+		end
+		printf "%s", $td->td_proc->p_comm
+		if ($td->td_proc->p_flag & $P_SYSTEM)
+		    printf "]"
+		end
+		printf "\n"
+		if ($osrelease >= 8)
+		    set $kse = $td->td_runq.tqe_next
+		else
+		    if ($osrelease == 7)
+			set $kse = $kse->ts_procq.tqe_next
+		    else
+			set $kse = $kse->ke_procq.tqe_next
+		    end
+		end
+	    end
+	end
+	set $i = $i + 1
+    end
+end
+
+define runqs_4bsd
+    printf "queue pri    tid     pid   cmd\n"
+    runq &runq -1
+    if (mp_maxcpus >= 1)
+	set $j = 0
+	while ($j < mp_maxcpus)
+	    runq &runq_pcpu[$j] $j
+	    set $j = $j + 1
+	end
+    end
+end
+
+define runqs_ule
+    printf "queue pri    tid     pid   cmd\n"
+    set $j = 0
+    while ($j < mp_maxcpus)
+        set $tdq = tdq_cpu[$j]
+        runq $tdq->tdq_realtime $j
+        runq $tdq->tdq_timeshare $j
+        runq $tdq->tdq_idle $j
+	set $j = $j + 1
+    end
+end
+
+define runqs
+    set $name = (char *)sysctl___kern_sched_name->oid_arg1
+    if ($name[0] == 'U' && $name[1] == 'L' && $name[2] == 'E')
+	runqs_ule
+    else
+	if ($name[0] == '4' && $name[1] == 'B' && $name[2] == 'S')
+	    runqs_4bsd
+	else
+	    printf "Unknown scheduler: %s\n", $name
+	end
+    end
+end
+
+document runqs
+Display all threads on run queues.
+end
+
+define runtds
+    printf "CPU ticks pri    tid     pid   cmd\n"
+    pcpu_first $p
+    while ($p != 0)
+	if ($__i386__ && $p == 0xffc00000 || $p == 0xffe00000)
+	    set $p = (struct pcpu *)cpu0prvpage
+	end
+	printf "%3d %5d ", $p->pc_cpuid, ticks - $p->pc_switchticks
+	set $td = $p->pc_curthread
+	printf "%3d %9d %5d ", (u_int)$td->td_priority, $td->td_tid, \
+	    $td->td_proc->p_pid
+	if ($td->td_proc->p_flag & $P_SYSTEM)
+	    printf "["
+	end
+	printf "%s", $td->td_proc->p_comm
+	if ($td->td_proc->p_flag & $P_SYSTEM)
+	    printf "]"
+	end	
+	printf "\n"
+	pcpu_next $p
+    end
+end
+
+document runtds
+Display running threads and their priorities.
+end
+
+set $IFF_UP = 0x1
+set $IFF_BROADCAST = 0x2
+set $IFF_LOOPBACK = 0x8
+set $IFF_POINTTOPOINT = 0x10
+set $IFF_DRV_RUNNING = 0x40
+set $IFF_PROMISC = 0x100
+set $IFF_ALLMULTI = 0x200
+set $IFF_DRV_OACTIVE = 0x400
+set $IFF_SIMPLEX = 0x800
+set $IFF_MULTICAST = 0x8000
+set $IFF_CANTCONFIG = 0x10000
+set $IFF_PPROMISC = 0x20000
+set $IFF_MONITOR = 0x40000
+set $IFF_STATICARP = 0x80000
+
+set $LINK_STATE_UNKNOWN = 0
+set $LINK_STATE_DOWN = 1
+set $LINK_STATE_UP = 2
+
+set $IFCAP_RXCSUM = 0x00001
+set $IFCAP_TXCSUM = 0x00002
+set $IFCAP_NETCONS = 0x00004
+set $IFCAP_VLAN_MTU = 0x00008
+set $IFCAP_VLAN_HWTAGGING = 0x00010
+set $IFCAP_JUMBO_MTU = 0x00020
+set $IFCAP_POLLING = 0x00040
+set $IFCAP_VLAN_HWCSUM = 0x00080
+set $IFCAP_TSO4 = 0x00100
+set $IFCAP_TSO6 = 0x00200
+set $IFCAP_LRO = 0x00400
+set $IFCAP_WOL_UCAST = 0x00800
+set $IFCAP_WOL_MCAST = 0x01000
+set $IFCAP_WOL_MAGIC = 0x02000
+set $IFCAP_TOE4 = 0x04000
+set $IFCAP_TOE6 = 0x08000
+set $IFCAP_VLAN_HWFILTER = 0x10000
+set $IFCAP_VLAN_HWTSO = 0x40000
+set $IFCAP_LINKSTATE = 0x80000
+
+set $AF_INET = 2
+set $AF_LINK = 18
+
+set $IFT_ETHER = 0x6
+
+set $ETHER_ADDR_LEN = 6
+
+define bswap16
+    set $_local = $arg0
+    set $arg1 = ($_local & 0xff00) >> 8 | ($_local & 0xff) << 8
+end
+
+define bswap32
+    set $_local = $arg0
+    set $arg1 = ($_local >> 24) | ($_local >> 8 & 0xff00) | \
+        ($_local << 8 & 0xff0000) | ($_local << 24 & 0xff000000)
+end
+
+define print_ether_addr
+    set $_cp = (unsigned char *)$arg0
+    set $_i = 0
+    while ($_i < $ETHER_ADDR_LEN - 1)
+	printf "%02x:", *$_cp
+	set $_cp = $_cp + 1
+	set $_i = $_i + 1
+    end
+    printf "%02x", *$_cp
+end
+
+define print_ip
+    set $_cp = (unsigned char *)$arg0
+    printf "%d.%d.%d.%d", $_cp[0], $_cp[1], $_cp[2], $_cp[3]
+end
+
+define print_port
+    bswap16 $arg0 $_port
+    printf "%d", $_port
+end
+
+define print_sin
+    set $_sin = (struct sockaddr_in *)$arg0
+    set $_ip = &$_sin->sin_addr
+    print_ip $_ip
+    if ($_sin->sin_port != 0)
+	printf ":"
+	print_port $_sin->sin_port
+    end
+end
+
+define print_sa
+    set $_sa = (struct sockaddr *)$arg0
+    if ($_sa->sa_family == $AF_LINK)
+	set $_sdl = (struct sockaddr_dl *)$_sa
+	if ($_sdl->sdl_type == $IFT_ETHER && $_sdl->sdl_alen == $ETHER_ADDR_LEN)
+	    printf "    ether "
+	    set $_eaddr = (unsigned char *)$_sdl->sdl_data + $_sdl->sdl_nlen
+	    print_ether_addr $_eaddr
+	else
+	    printf "    link (%d)", $_sdl->sdl_type
+	end
+    else
+	if ($_sa->sa_family == $AF_INET)
+	    printf "    inet  "
+	    print_sin $_sa
+	else
+	    printf "    family (%d)", $_sa->sa_family
+	end
+    end
+end
+
+define print_ifa
+    if ($arg0->ifa_addr->sa_family == $AF_LINK)
+	set $_sdl = (struct sockaddr_dl *)$arg0->ifa_addr
+	if ($_sdl->sdl_type == $IFT_ETHER && $_sdl->sdl_alen == $ETHER_ADDR_LEN)
+	    printf "    ether "
+	    set $_eaddr = (unsigned char *)$_sdl->sdl_data + $_sdl->sdl_nlen
+	    print_ether_addr $_eaddr
+	    printf "\n"
+	end
+    else
+	if ($arg0->ifa_addr->sa_family == $AF_INET)
+	    printf "    inet "
+	    print_sin $arg0->ifa_addr
+	    if ($arg0->ifa_ifp->if_flags & $IFF_POINTTOPOINT)
+		printf " --> "
+		print_sin $arg0->ifa_dstaddr
+	    end
+	    printf " netmask "
+	    print_sin $arg0->ifa_netmask
+	    if ($arg0->ifa_ifp->if_flags & $IFF_BROADCAST)
+		printf " broadcast "
+		print_sin $arg0->ifa_dstaddr
+	    end
+	    printf "\n"
+	end
+    end
+end
+
+define print_ifnet
+    printf "%s: %p\n", $arg0->if_xname, $arg0
+    set $_comma = 0
+    printf "    flags=%x<", $arg0->if_flags | $arg0->if_drv_flags
+    print_flag $arg0->if_flags $IFF_UP "UP" ","
+    print_flag $arg0->if_flags $IFF_BROADCAST "BROADCAST" ","
+    print_flag $arg0->if_flags $IFF_LOOPBACK "LOOPBACK" ","
+    print_flag $arg0->if_flags $IFF_POINTTOPOINT "POINTTOPOINT" ","
+    print_flag $arg0->if_drv_flags $IFF_DRV_RUNNING "RUNNING" ","
+    print_flag $arg0->if_flags $IFF_PROMISC "PROMISC" ","
+    print_flag $arg0->if_flags $IFF_ALLMULTI "ALLMULTI" ","
+    print_flag $arg0->if_drv_flags $IFF_DRV_OACTIVE "OACTIVE" ","
+    print_flag $arg0->if_flags $IFF_SIMPLEX "SIMPLEX" ","
+    print_flag $arg0->if_flags $IFF_MULTICAST "MULTICAST" ","
+    print_flag $arg0->if_flags $IFF_PPROMISC "PPROMISC" ","
+    print_flag $arg0->if_flags $IFF_MONITOR "MONITOR" ","
+    print_flag $arg0->if_flags $IFF_STATICARP "STATICARP" ","
+    printf ">"
+    if ($arg0->if_data.ifi_metric)
+	printf " metric %ld", $arg0->if_data.ifi_metric
+    end
+    if ($arg0->if_data.ifi_mtu)
+	printf " mtu %ld", $arg0->if_data.ifi_mtu
+    end
+    printf "\n"
+    if ($arg0->if_capenable)
+	set $_comma = 0
+	printf "    options=%x<", $arg0->if_capenable
+	print_flag $arg0->if_capenable $IFCAP_RXCSUM "RXCSUM" ","
+	print_flag $arg0->if_capenable $IFCAP_TXCSUM "TXCSUM" ","
+	print_flag $arg0->if_capenable $IFCAP_NETCONS "NETCONS" ","
+	print_flag $arg0->if_capenable $IFCAP_VLAN_MTU "VLAN_MTU" ","
+	print_flag $arg0->if_capenable $IFCAP_VLAN_HWTAGGING "VLAN_HWTAGGING" ","
+	print_flag $arg0->if_capenable $IFCAP_JUMBO_MTU "JUMBO_MTU" ","
+	print_flag $arg0->if_capenable $IFCAP_POLLING "POLLING" ","
+	print_flag $arg0->if_capenable $IFCAP_VLAN_HWCSUM "VLAN_HWCSUM" ","
+	print_flag $arg0->if_capenable $IFCAP_TSO4 "TSO4" ","
+	print_flag $arg0->if_capenable $IFCAP_TSO6 "TSO6" ","
+	print_flag $arg0->if_capenable $IFCAP_LRO "LRO" ","
+	print_flag $arg0->if_capenable $IFCAP_WOL_UCAST "WOL_UCAST" ","
+	print_flag $arg0->if_capenable $IFCAP_WOL_MCAST "WOL_MCAST" ","
+	print_flag $arg0->if_capenable $IFCAP_WOL_MAGIC "WOL_MAGIC" ","
+	print_flag $arg0->if_capenable $IFCAP_TOE4 "TOE4" ","
+	print_flag $arg0->if_capenable $IFCAP_TOE6 "TOE6" ","
+	print_flag $arg0->if_capenable $IFCAP_VLAN_HWFILTER "VLAN_HWFILTER" ","
+	print_flag $arg0->if_capenable $IFCAP_VLAN_HWTSO "VLAN_HWTSO" ","
+	print_flag $arg0->if_capenable $IFCAP_LINKSTATE "LINKSTATE" ","
+	printf ">\n"
+    end
+    set $ifa = $arg0->if_addrhead.tqh_first
+    while ($ifa)
+	print_ifa $ifa
+	set $ifa = $ifa->ifa_link.tqe_next
+    end
+    if ($arg0->if_data.ifi_link_state == $LINK_STATE_UP)
+	printf "    link: UP\n"
+    else
+	if ($arg0->if_data.ifi_link_state == $LINK_STATE_DOWN)
+	    printf "	link: DOWN\n"
+	else
+	    if ($arg0->if_capenable & $IFCAP_LINKSTATE)
+		printf "    link: ???\n"
+	    end
+	end
+    end
+    if ($arg0->if_dname[0] == 'v' && $arg0->if_dname[1] == 'l' && \
+	$arg0->if_dname[2] == 'a' && $arg0->if_dname[3] == 'n')
+	set $_ifv = (struct ifvlan *)$arg0->if_softc
+	printf "    vlan: "
+	if ($_ifv->ifv_trunk != 0)
+	    printf "%d", $_ifv->ifv_mib.ifvm_tag
+	else
+	    printf "0"
+	end
+	printf " parent interface: "
+	if ($_ifv->ifv_trunk != 0)
+	    printf "%s", $_ifv->ifv_trunk->parent->if_xname
+	else
+	    printf "<none>"
+	end
+	printf "\n"
+    end
+    if ($arg0->if_dname[0] == 'b' && $arg0->if_dname[1] == 'r' && \
+	$arg0->if_dname[2] == 'i' && $arg0->if_dname[3] == 'd' && \
+	$arg0->if_dname[4] == 'g' && $arg0->if_dname[5] == 'e')
+	set $_sc = (struct bridge_softc *)$arg0->if_softc
+	printf "    members:"
+	set $_bif = $_sc->sc_iflist.lh_first
+	while ($_bif != 0)
+	    printf " %s", $_bif->bif_ifp->if_xname
+	    set $_bif = $_bif->bif_next.le_next
+	end
+	printf "\n"
+	printf "    span ports:"
+	set $_bif = $_sc->sc_spanlist.lh_first
+	while ($_bif != 0)
+	    printf " %s", $_bif->bif_ifp->if_xname
+	    set $_bif = $_bif->bif_next.le_next
+	end
+	printf "\n"
+    else
+        if ($arg0->if_bridge != 0)
+	    set $_sc = (struct bridge_softc *)$arg0->if_bridge
+	    printf "    bridge: %s\n", $_sc->sc_ifp->if_xname
+	end
+    end
+end
+
+define ifconfig
+    set $ifp = ifnet.tqh_first
+    while ($ifp != 0)
+        if (!($ifp->if_flags & $IFF_CANTCONFIG))
+	    print_ifnet $ifp
+	end
+	set $ifp = $ifp->if_link.tqe_next
+    end
+end
+
+document ifconfig
+Stripped down output similar to 'ifconfig -a'.
+end
+
+define maddr
+    set $_ifp = (struct ifnet *)$arg0
+    printf "%s: multicast addresses:\n", $_ifp->if_xname
+    set $_ifma = $_ifp->if_multiaddrs.tqh_first
+    while ($_ifma != 0)
+        print_sa $_ifma->ifma_addr
+	printf " (%d)\n", $_ifma->ifma_refcount
+	set $_ifma = $_ifma->ifma_link.tqe_next
+    end
+end
+
+document maddr
+Display multicast addresses for a specified interface.
+end
+
+define imo
+    set $_i = 0
+    while ($_i < $arg0->imo_num_memberships)
+        set $_in = $arg0->imo_membership[$_i]
+        printf " group "
+        print_ip &$_in->inm_addr.s_addr
+	printf " on %s\n", $_in->inm_ifp->if_xname
+        set $_i = $_i + 1
+    end
+end
+
+document imo
+Display multicast addresses for an inpcb multicast options list.
+end
+
+define inaddr
+    set $_ie = &((struct inpcb *)$arg0)->inp_inc.inc_ie
+    set $_ip = &$_ie->ie_dependladdr.ie46_local.ia46_addr4
+    print_ip $_ip
+    printf ":"
+    print_port $_ie.ie_lport 
+    printf " -> "
+    set $_ip = &$_ie->ie_dependfaddr.ie46_foreign.ia46_addr4
+    print_ip $_ip
+    printf ":"
+    print_port $_ie.ie_fport
+    printf "\n"
+    set $_imo = ((struct inpcb *)$arg0)->inp_depend4.inp4_moptions
+    if ($_imo != 0)
+	imo $_imo
+    end
+end
+
+document inaddr
+Print out addresses for an inpcb.
+end
+
+define tcphc
+    set $_i = 0
+    while ($_i < tcp_hostcache.hashsize)
+	set $_hc_metrics = tcp_hostcache.hashbase[$_i].hch_bucket.tqh_first
+	while ($_hc_metrics != 0)
+		printf "%p: ", $_hc_metrics
+		if ($_hc_metrics.ip4.s_addr != 0)
+		    print_ip &$_hc_metrics.ip4.s_addr
+		else
+		    printf "IPV6"
+		end
+		printf " mtu %d ssthresh %d cwnd %d\n", $_hc_metrics->rmx_mtu, \
+		    $_hc_metrics->rmx_ssthresh, $_hc_metrics->rmx_cwnd
+		set $_hc_metrics = $_hc_metrics->rmx_q.tqe_next
+	end
+	set $_i = $_i + 1
+    end
+end
+
+document tcphc
+Print out the TCP hostcache entries.
+end
+
+define tcps
+    set $_inp = tcbinfo.ipi_listhead.lh_first
+    while ($_inp != 0)
+	printf "%p: ", $_inp
+	inaddr $_inp
+	set $_inp = $_inp.inp_list.le_next
+    end
+end
+
+document tcps
+Print out all TCP control blocks.
+end
+
+define udps
+    set $_inp = udbinfo.ipi_listhead.lh_first
+    while ($_inp != 0)
+	printf "%p: ", $_inp
+	inaddr $_inp
+	set $_inp = $_inp.inp_list.le_next
+    end
+end
+
+document udps
+Print out all UDP control blocks.
+end
+
+define cdevs
+    set $cdev = cdevp_list->tqh_first
+    while ($cdev != 0)
+	printf "%p: %s (%p)\n", $cdev, $cdev->cdp_c.__si_namebuf, \
+	    $cdev->cdp_c.si_drv1
+	set $cdev = $cdev->cdp_list.tqe_next
+    end
+end
+
+document cdevs
+List cdev's in system along with pointers to specinfo and si_drv1.
+end
+
+define bpfs
+    set $cdev = cdevp_list->tqh_first
+    while ($cdev != 0)
+	if ($cdev->cdp_c.__si_namebuf[0] == 'b' && \
+	    $cdev->cdp_c.__si_namebuf[1] == 'p' && \
+	    $cdev->cdp_c.__si_namebuf[2] == 'f')
+	    set $bpf = (struct bpf_d *)$cdev->cdp_c.si_drv1
+	    printf "%s: ", $cdev->cdp_c.__si_namebuf
+	    if ($bpf == 0)
+		printf "---"
+	    else
+		printf "pid %d (%s)", $bpf->bd_pid, $bpf->bd_pcomm
+	    end
+	    printf " flags %#x ref %d use %d thread %d\n", \
+		$cdev->cdp_c.si_flags, $cdev->cdp_c.si_refcount, \
+		$cdev->cdp_c.si_usecount, $cdev->cdp_c.si_threadcount
+	end
+	set $cdev = $cdev->cdp_list.tqe_next
+    end    
+end
+
+document bpfs
+List all bpf devices in the system along with the pid of the owner.
+end
+
+define ip
+    set $_ip = (u_int32_t)$arg0
+    printf "%d.%d.%d.%d\n", $_ip >> 24, $_ip >> 16 & 0xff, \
+	$_ip >> 8 & 0xff, $_ip & 0xff
+end
+
+document ip
+Print IPv4 address in dotted-decimal format.
+end
+
+define sin
+    set $_sin = (struct sockaddr_in *)$arg0
+    bswap16 $_sin->sin_port $_port
+    printf "IP: "
+    ip $_sin->sin_addr.s_addr
+    printf "port: %d\n", $_port
+end
+
+document sin
+Display IP and port of a AF_INET socket address.
+end
+
+define prison_ips
+    printf "host: %s\n", $arg0->pr_host
+    set $_i = 0
+    while ($_i < $arg0->pr_nips)
+	ip $arg0->pr_ips[$_i]->pi_ip
+	set $_i = $_i + 1
+    end
+end
+
+document prison_ips
+Display IP addresses of a JAILED_VIPS prison.
+end
+
+define mounts
+    set $_m = mountlist.tqh_first
+    while ($_m != 0)
+	printf "%p: %-20s  %-20s %s\n", $_m, $_m->mnt_stat.f_mntfromname, \
+	    $_m->mnt_stat.f_mntonname, $_m->mnt_stat.f_fstypename
+	set $_m = $_m->mnt_list.tqe_next
+    end
+end
+
+document mounts
+Display mount points.
+end
+
+define rootvp
+    set $_m = (struct mount *)$arg0
+    set $_vp = $_m->mnt_nvnodelist.tqh_first
+    while ($_vp != 0)
+	if ($_vp->v_vflag & $VV_ROOT)
+	    printf "root: %p\n", $_vp
+	    set $_vp = 0
+	else
+	    set $_vp = $_vp->v_nmntvnodes.tqe_next
+	end
+    end
+end
+
+document rootvp
+Find root vnode for a given mount point.
+end
+
+define mntoptlist
+    set $_opt = $arg0.tqh_first
+    while ($_opt != 0)
+	printf "  %-16s: ", $_opt->name
+	if ($_opt->value != 0)
+	    printf "%s", (char *)$_opt->value
+	end
+	printf "\n"
+	set $_opt = $_opt->link.tqe_next
+    end
+end
+
+define mntopts
+    set $_m = (struct mount *)$arg0
+    printf "Current mount options for %s\n", $_m->mnt_stat.f_mntonname
+    mntoptlist $_m->mnt_opt
+    if ($_m->mnt_optnew != 0)
+	printf "New mount options:\n"
+	mntoptlist $_m->mnt_optnew
+    end
+end
+
+document mntopts
+Display the mount options for a specified mount.
+end
+
+define print_nc_name
+    if ($arg0->nc_flag & $NCF_TS)
+	set $_nc_name = ((struct namecache_ts *)$arg0)->nc_name
+    else
+	set $_nc_name = $arg0->nc_name
+    end
+    set $_i = 0	
+    while ($_i < $arg0.nc_nlen)
+	printf "%c", $_nc_name[$_i]
+	set $_i = $_i + 1
+    end
+end
+
+define vls
+    set $_vp = (struct vnode *)$arg0
+    set $_ncp = $_vp->v_cache_src.lh_first
+    while ($_ncp != 0)
+	printf "%p: ", $_ncp->nc_vp
+	print_nc_name $_ncp
+	if ($_ncp->nc_vp != 0 && $_ncp->nc_vp->v_type == VDIR)
+	    printf "/"
+	end
+	printf "\n"
+	set $_ncp = $_ncp->nc_src.le_next
+    end
+end
+
+document vls
+List child vnodes of a given vnode in the name cache.
+end
+
+define vpath
+    set $_vp = (struct vnode *)$arg0
+    while ($_vp != 0)
+	printf "%p: ", $_vp
+	if ($_vp == rootvnode)
+	    printf "/"
+	    set $_vp = 0
+	else
+	    if ($_vp->v_vflag & $VV_ROOT)
+		printf "<mount point>"
+		set $_vp = $_vp->v_mount->mnt_vnodecovered
+	    else
+		set $_ncp = $_vp->v_cache_dst.tqh_first
+		if ($_ncp != 0)
+		    print_nc_name $_ncp
+		    set $_vp = $_ncp->nc_dvp
+		else
+		    set $_vp = 0
+		end
+	    end
+	end
+	printf "\n"
+    end
+end
+
+document vpath
+Walk the namecache to lookup the pathname of a vnode.
+end
+
+define nfsfh
+    set $_vp = (struct vnode *)$arg0
+    set $_np = (struct nfsnode *)$_vp->v_data
+    set $_i = 0
+    while ($_i < $_np->n_fhsize)
+	printf "%02x", ((u_char *)$_np->n_fhp)[$_i]
+	set $_i = $_i + 1
+	if ($_i % 32 == 0)
+	    printf "\n"
+	end
+    end
+    if ($_i % 32 != 0)
+	printf "\n"
+    end
+end
+
+document nfsfh
+Display the filehandle for a NFS vnode in hex.
+end
+
+set $DIRHASH_EMPTY = -1
+set $DIRHASH_DEL = -2
+set $DH_BLKOFFSHIFT = 8
+set $DH_NBLKOFF = (1 << $DH_BLKOFFSHIFT)
+
+define dirhash
+    set $_vp = (struct vnode *)$arg0
+    set $_ip = (struct inode *)$_vp->v_data
+    set $_dh = $_ip->i_un.dirhash
+    set $i = 0
+    printf "%d entries for %p:\n", $_dh->dh_hlen, $_dh
+    while ($i < $_dh->dh_narrays)
+	set $j = 0
+	while ($j < $DH_NBLKOFF)
+	    if ($_dh->dh_hash[$i][$j] != $DIRHASH_EMPTY)
+		if ($_dh->dh_hash[$i][$j] == $DIRHASH_DEL)
+		    printf "%4d: DELETED\n", ($i << $DH_BLKOFFSHIFT) + $j
+		else
+		    printf "%4d: %08x\n", ($i << $DH_BLKOFFSHIFT) + $j, \
+			$_dh->dh_hash[$i][$j]
+		end
+	    end
+	    set $j = $j + 1
+	end
+	set $i = $i + 1
+    end
+end
+
+document dirhash
+Display directory hash for a UFS directory vnode.
+end
+
+define kqueue
+    set $_kq = (struct kqueue *)$arg0
+    set $_i = 0
+    while ($_i < $_kq->kq_knlistsize)
+	set $_kn = $_kq->kq_knlist[$_i].slh_first
+	if ($_kn != 0)
+	    printf "fd %d:\n", $_i
+	    while ($_kn != 0)
+		printf "  filter %d flags %d udata %p\n", \
+		    $_kn->kn_kevent.filter, $_kn->kn_kevent.flags, \
+		    $_kn->kn_kevent.udata
+		set $_kn = $_kn->kn_link.sle_next
+	    end
+	end
+	set $_i = $_i + 1
+    end
+end
+
+document kqueue
+Enumerate the knotes belong to a kqueue.
+end
+
+# <start> <end>
+define kvm_range
+    printf "%lx - %lx (%10lx) ", $arg0, $arg1, (long)$arg1 - (long)$arg0
+end
+
+# <start> <end> <entry>
+define kmap_entry
+    kvm_range $arg0 $arg1
+    if ($arg2->eflags & $MAP_ENTRY_IS_SUB_MAP)
+	set $_submap = $arg2->object.sub_map
+	if ($_submap == kmem_map)
+	    printf "kmem_map"
+	else
+	    if ($_submap == pipe_map)
+		printf "pipe_map"
+	    else
+		if ($_submap == exec_map)
+		    printf "exec_map"
+		else
+		    if ($_submap->header.next->object.sub_map == buffer_map)
+			printf "buffer_map + pager_map"
+		    else
+			printf "map %p", $_submap
+		    end
+		end
+	    end
+	end
+    else
+	if ($arg2->object.vm_object != 0)
+	    set $_obj = $arg2->object.vm_object
+	    if ($_obj == &kernel_object_store)
+		printf "kmem_alloc() / contigmalloc()"
+	    else
+		printf "object %p", $_obj
+	    end
+	else
+	    if ($arg2->eflags & $MAP_ENTRY_NOFAULT)
+		printf "kmem_alloc_nofault() (kstack/mapdev)"
+	    else
+		printf "anon"
+	    end
+	end
+    end
+    printf "\n"
+end
+
+define kvm
+    set $_entry = kernel_map->header.next
+    set $_i = 0
+    if ($osrelease < 8)
+	set $_swapkeg = swap_zone->uz_keg
+	set $_callout = callout
+    else
+	set $_swapkeg = swap_zone->uz_kegs.lh_first->kl_keg
+	set $_callout = cc_cpu[0].cc_callout
+    end
+    set $_swapstart = $_swapkeg->uk_kva
+    set $_swapend = $_swapstart + $_swapkeg->uk_maxpages * $PAGE_SIZE
+    if (mp_ncpus > 1)
+	# XXX - amd64 only
+	set $_bootstacks_start = (long)bootstacks[1]
+	set $_bootstacks_size = (long)bootstacks[2] - (long)bootstacks[1]
+	set $_bootstacks_end = (long)bootstacks[mp_ncpus - 1] + $_bootstacks_size
+    else
+	set $_bootstacks_start = 0
+	set $_bootstacks_end = 0
+    end
+    if ($_entry->start != kernel_map->header.start)
+	kvm_range kernel_map->header.start $_entry->start
+	printf "----\n"
+    end
+    while ($_i < kernel_map.nentries)
+	if (&_end >= $_entry->start && &_end <= $_entry->end)
+	    kvm_range $_entry->start (long)&_end
+	    printf "text/data/bss\n"
+	    kvm_range (long)&_end $_entry->end
+	    printf "bootstrap data\n"
+	else
+	    if ($_swapstart >= $_entry->start && $_swapend <= $_entry->end)
+		if ($_swapstart != $_entry->start)
+		    kmap_entry $_entry->start $_swapstart $_entry
+		end
+		kvm_range $_swapstart $_swapend
+		printf "swap zone\n"
+		if ($_swapend != $_entry->end)
+		    kmap_entry $_swapend $_entry->end $_entry
+		end
+	    else
+		if ($_entry->start == $_callout)
+		    kvm_range (long)$_callout (long)swbuf
+		    printf "callouts\n"
+		    kvm_range (long)swbuf (long)buf
+		    printf "swbuf\n"
+		    kvm_range (long)buf $_entry->end
+		    printf "buf\n" 
+		else
+		    if ($_bootstacks_start >= $_entry->start && \
+			$_bootstacks_end <= $_entry->end)
+			if ($_bootstacks_start != $_entry->start)
+			    kmap_entry $_entry->start $_bootstacks_start $_entry
+			end
+			kvm_range $_bootstacks_start $_bootstacks_end
+			printf "AP stacks\n"
+			if ($_bootstacks_end != $_entry->end)
+			    kmap_entry $_bootstacks_end $_entry->end $_entry
+			end
+		    else
+			kmap_entry $_entry->start $_entry->end $_entry
+		    end
+		end
+	    end
+	end
+	if ($_entry->next != &kernel_map.header && \
+	    $_entry->next->start != $_entry->end)
+	    kvm_range $_entry->end $_entry->next->start
+	    printf "----\n"
+	end
+	set $_entry = $_entry->next
+	set $_i = $_i + 1
+    end
+    if (kernel_map->header.prev->end < kernel_vm_end)
+        kvm_range kernel_map->header.prev->end kernel_vm_end
+	printf "----\n"
+    end
+end
+
+document kvm
+List the map top-level map entries in the kernel map.
+end
+
+define print_vmo
+    if ($arg0 == 0)
+	printf "none -"
+    else
+	if ($arg0->type == $OBJT_DEAD)
+	    printf "dead -"
+	else
+	    if ($arg0->type == $OBJT_DEFAULT)
+		printf "default -"
+	    else
+		if ($arg0->type == $OBJT_VNODE)
+		    printf "vnode %p", $arg0->handle
+		else
+		    if ($arg0->type == $OBJT_SWAP)
+			printf "swap -"
+		    else
+			if ($arg0->type == $OBJT_DEVICE)
+			    printf "device %p", $arg0->handle
+			else
+			    if ($arg0->type == $OBJT_PHYS)
+				printf "phys -"
+			    else
+				if ($arg0->type == $OBJT_SG)
+				    printf "sglist %p", $arg0->handle
+				else
+				    printf "%d %p", $arg0->type, \
+					$arg0->handle
+				end
+			    end
+			end
+		    end
+		end
+	    end
+	end
+    end
+end
+
+define vmmap
+    set $_map = (struct vm_map *)$arg0
+    set $_entry = $_map->header.next
+    set $_loop = 1
+    while ($_loop)
+	if (($_entry->eflags & $MAP_ENTRY_IS_SUB_MAP) == 0)
+	    printf "0x%lx - 0x%lx ", $_entry->start, $_entry->end
+	    set $_obj = $_entry->object.vm_object
+	    printf "%p ", $_obj
+	    if ($_entry->protection & $VM_PROT_READ)
+		printf "r"
+	    else
+		printf "-"
+	    end
+	    if ($_entry->protection & $VM_PROT_WRITE)
+		printf "w"
+	    else
+		printf "-"
+	    end
+	    if ($_entry->protection & $VM_PROT_EXECUTE)
+		printf "x "
+	    else
+		printf "- "
+	    end
+	    if ($_obj != 0)
+		printf "%d %d 0x%x ", $_obj->ref_count, $_obj->shadow_count, \
+		    $_obj->flags
+	    else
+		printf "0 0 0x0 "
+	    end
+	    if ($_entry->eflags & $MAP_ENTRY_COW)
+		printf "COW "
+	    else
+		printf "!COW "
+	    end
+	    if ($_entry->eflags & $MAP_ENTRY_NEEDS_COPY)
+		printf "NC "
+	    else
+		printf "!NC "
+	    end
+	    print_vmo $_obj
+	    printf "\n"
+	end
+	set $_entry = $_entry->next
+	if ($_entry == &$_map->header)
+	    set $_loop = 0
+	end
+    end
+end
+
+document vmmap
+Display the entries in a VM map.
+end
+
+define ule_load_7
+    set $i = 0
+    while ($i <= tdg_maxid)
+	printf "tdg %d: %d\n", $i, tdq_groups[$i].tdg_load
+	set $i = $i + 1
+    end
+end
+
+define ule_load_8
+    set $i = 0
+    while ($i <= mp_maxid)
+	if ((1 << $i) & all_cpus)
+	    printf "tdq %d: %d\n", $i, tdq_cpu[$i].tdq_sysload
+	end
+	set $i = $i + 1
+    end
+end
+
+define ule_load
+    if ($osrelease >= 8)
+	ule_load_8
+    else
+	ule_load_7
+    end
+end
+
+document ule_load
+Display scheduler load.
+end
+
+set $SLP_VALID = 0x01
+set $SLP_DOREC = 0x02
+set $SLP_NEEDQ = 0x04
+set $SLP_DISCONN = 0x08
+set $SLP_GETSTREAM = 0x10
+set $SLP_LASTFRAG = 0x20
+
+define nfsd_sockets_7
+    set $valid = 0
+    set $dorec = 0
+    set $needq = 0
+    set $disconn = 0
+    set $getstream = 0
+    set $lastfrag = 0
+    set $count = 0
+    set $slp = nfssvc_sockhead.tqh_first
+    while ($slp != 0)
+	if ($slp->ns_flag & $SLP_VALID)
+	    set $valid = $valid + 1
+	end
+	if ($slp->ns_flag & $SLP_DOREC)
+	    set $dorec = $dorec + 1
+	end
+	if ($slp->ns_flag & $SLP_NEEDQ)
+	    set $needq = $needq + 1
+	end
+	if ($slp->ns_flag & $SLP_DISCONN)
+	    set $disconn = $disconn + 1
+	end
+	if ($slp->ns_flag & $SLP_GETSTREAM)
+	    set $getstream = $getstream + 1
+	end
+	if ($slp->ns_flag & $SLP_LASTFRAG)
+	    set $lastfrag = $lastfrag + 1
+	end
+	set $count = $count + 1
+	set $slp = $slp->ns_chain.tqe_next
+    end
+    printf "total: %d  valid: %d  dorec: %d  needq: %d\n", $count, $valid, \
+	$dorec, $needq
+    printf "disconn: %d  getstream: %d  lastfrag: %d\n", $disconn, $getstream, \
+	$lastfrag
+end
+
+define tcpstatename
+    if ($arg0 > $TCPS_TIME_WAIT)
+	printf "BAD: %d", $arg0
+    else
+	if ($arg0 > $TCPS_CLOSING)
+	    if ($arg0 == $TCPS_TIME_WAIT)
+		printf "TIME_WAIT"
+	    else
+		if ($arg0 == $TCPS_FIN_WAIT_2)
+		    printf "FIN_WAIT_2"
+		else
+		    printf "TCPS_LAST_ACK"
+		end
+	    end
+	else
+	    if ($arg0 > $TCPS_SYN_RECEIVED)
+		if ($arg0 > $TCPS_CLOSE_WAIT)
+		    if ($arg0 == $TCPS_CLOSING)
+			printf "CLOSING"
+		    else
+			printf "FIN_WAIT_1"
+		    end
+		else
+		    if ($arg0 == $TCPS_CLOSE_WAIT)
+			printf "CLOSE_WAIT"
+		    else
+			printf "ESTABLISHED"
+		    end
+		end
+	    else
+		if ($arg0 > $TCPS_LISTEN)
+		    if ($arg0 == $TCPS_SYN_RECEIVED)
+			printf "SYN_RECEIVED"
+		    else
+			printf "SYN_SENT"
+		    end
+		else
+		    if ($arg0 == $TCPS_LISTEN)
+			printf "LISTEN"
+		    else
+			printf "CLOSED"
+		    end
+		end
+	    end
+	end
+    end
+end
+
+define nfsd_sockets_8
+    set $_xprt = nfsrv_pool.sp_xlist.tqh_first
+    while ($_xprt != 0)
+	printf "%p: ", $_xprt->xp_socket
+	if ($_xprt->xp_ltaddr.ss_len != 0)
+	    print_sin &$_xprt->xp_ltaddr
+	else
+	    printf "ANY"
+	end
+	printf " -> "
+	if ($_xprt->xp_rtaddr.ss_len != 0)
+	    print_sin &$_xprt->xp_rtaddr
+	else
+	    printf "ANY"
+	end
+	if ($_xprt->xp_socket->so_proto->pr_protocol == $IPPROTO_TCP)
+	    set $_inp = (struct inpcb *)$_xprt->xp_socket->so_pcb
+	    set $_tp = (struct tcpcb *)$_inp->inp_ppcb
+	    printf " "
+	    tcpstatename $_tp->t_state
+	end
+	printf "\n"
+	set $_xprt = $_xprt->xp_link.tqe_next
+    end
+end
+
+define nfsd_sockets
+    if ($osrelease >= 8)
+	nfsd_sockets_8
+    else
+	nfsd_sockets_7
+    end
+end
+
+document nfsd_sockets
+Display stats about open NFS server client connections.
+end
+
+define futex_waiters
+    set $f = (struct futex *)$arg0
+    set $wp = $f->f_waiting_proc.tqh_first
+    while ($wp != 0)
+	printf "wp: %p\n", $wp
+	set $wp = $wp->wp_list.tqe_next
+    end
+end
+
+define rusage
+    printf "%d  %d  %d  %d\n", $arg0.ru_nvcsw, $arg0.ru_nivcsw, \
+	$arg0.ru_inblock, $arg0.ru_oublock
+end
+
+define proc_rusage
+    printf "%8d: ", $arg0->p_pid
+    rusage $arg0->p_ru
+    set $_td = $arg0->p_threads.tqh_first
+    set $td = $arg0.p_threads.tqh_first
+    while ($td != 0)
+	printf "%8d: ", $td->td_tid
+	rusage $td->td_ru
+	set $td = $td->td_plist.tqe_next
+    end
+end
+
+set $SELTD_PENDING = 0x0001
+set $SELTD_RESCAN = 0x0002
+
+define seltd
+    printf "st_flags: "
+    if ($arg0->st_flags & $SELTD_PENDING)
+         printf "PENDING"
+	 if ($arg0->st_flags & $SELTD_RESCAN)
+	     printf ","
+	 end
+    end
+    if ($arg0->st_flags & $SELTD_RESCAN)
+         printf "RESCAN"
+    end
+    printf "\n"
+    set $_selfd = $arg0->st_selq.stqh_first
+    while ($_selfd != 0)
+        printf "  selinfo: %p", $_selfd->sf_si
+	set $_fd = (long)$_selfd->sf_cookie
+	if ($_fd > 100000000)
+	    set $_pfd = (struct pollfd *)$_selfd->sf_cookie
+	    printf " fd: %d  events: %x", $_pfd->fd, $_pfd->events
+	else
+	    printf " fd: %d", $_fd
+	end
+	printf "\n"
+        set $_selfd = $_selfd->sf_link.stqe_next
+    end
+end
+
+document seltd
+Display file descriptors a thread is waiting for in select/poll.
+end
+
+define selinfo
+    set $_selfd = ((struct selinfo *)$arg0)->si_tdlist.tqh_first
+    while ($_selfd != 0)
+        printf "stp: %p\n", $_selfd->sf_td
+        set $_selfd = $_selfd->sf_threads.tqe_next
+    end
+end
+
+document selinfo
+Display the list of seltd waiters waiting on a selinfo.
+end
+
+define ttys
+    set $_tp = tty_list.tqh_first
+    while ($_tp != 0)
+        printf "%p:", $_tp
+	if ($_tp->t_dev)
+	    printf " %10s", $_tp->t_dev->si_name
+	else
+	    printf " (dead)    "
+	end
+	printf " sid %5u pgid %5u\n", \
+	    $_tp->t_session ? $_tp->t_session->s_sid : 0, \
+	    $_tp->t_pgrp ? $_tp->t_pgrp->pg_id : 0
+	set $_tp = $_tp->t_list.tqe_next
+    end
+end
+
+document ttys
+Display list of ttys.
+end
+
+define vm_phys_free_10
+    set $_dom = 0
+    while ($_dom < vm_ndomains)
+	printf "\nDOMAIN: %d\n", $_dom
+	set $_flind = 0
+	while ($_flind < vm_nfreelists)
+	    printf "\nFREE LIST %d:\n", $_flind
+	    printf "\n  ORDER (SIZE)  |  NUMBER"
+	    printf "\n              "
+	    set $_pind = 0
+	    while ($_pind < $VM_NFREEPOOL)
+		printf "  |  POOL %d", $_pind
+		set $_pind = $_pind + 1
+	    end
+	    printf "\n--            "
+	    set $_pind = 0
+	    while ($_pind < $VM_NFREEPOOL)
+		printf "-- --      "
+		set $_pind = $_pind + 1
+	    end
+	    printf "--\n"
+	    set $_oind = $VM_NFREEORDER - 1
+	    while ($_oind >= 0)
+		printf "  %2d (%6dK)", $_oind, 1 << ($PAGE_SHIFT - 10 + $_oind)
+		set $_pind = 0
+		set $_oind = $_oind - 1
+		while ($_pind < $VM_NFREEPOOL)
+		    set $_fl = vm_phys_free_queues[$_dom][$_flind][$_pind]
+		    printf "  |  %6d", $_fl[$_oind].lcnt
+		    set $_pind = $_pind + 1
+		end
+		printf "\n"
+	    end
+	    set $_flind = $_flind + 1
+	end
+	set $_dom = $_dom + 1
+    end
+end
+
+define vm_phys_free_9
+    set $_flind = 0
+    while ($_flind < vm_nfreelists)
+	printf "\nFREE LIST %d:\n", $_flind
+	printf "\n  ORDER (SIZE)  |  NUMBER"
+	printf "\n              "
+	set $_pind = 0
+	while ($_pind < $VM_NFREEPOOL)
+	    printf "  |  POOL %d", $_pind
+	    set $_pind = $_pind + 1
+	end
+	printf "\n--            "
+	set $_pind = 0
+	while ($_pind < $VM_NFREEPOOL)
+	    printf "-- --      "
+	    set $_pind = $_pind + 1
+	end
+	printf "--\n"
+	set $_oind = $VM_NFREEORDER - 1
+	while ($_oind >= 0)
+	    printf "  %2d (%6dK)", $_oind, 1 << ($PAGE_SHIFT - 10 + $_oind)
+	    set $_pind = 0
+	    set $_oind = $_oind - 1
+	    while ($_pind < $VM_NFREEPOOL)
+		set $_fl = vm_phys_free_queues[$_flind][$_pind]
+		printf "  |  %6d", $_fl[$_oind].lcnt
+		set $_pind = $_pind + 1
+	    end
+	    printf "\n"
+	end
+	set $_flind = $_flind + 1
+    end
+end
+
+define vm_phys_free
+    if ($osrelease >= 10)
+	vm_phys_free_10
+    else
+	vm_phys_free_9
+    end
+end
+
+document vm_phys_free
+Output state of the physical memory allocator
+end
+
+define vm_phys_lookup_lists
+    set $_ndomains = vm_nfreelists - $VM_NFREELIST + 1
+    set $_domain = 0
+    while ($_domain < $_ndomains)
+	printf "DOMAIN %d:\n\n", $_domain
+	set $_flind = 0
+	while ($_flind < vm_nfreelists)
+	    set $_fl = vm_phys_lookup_lists[$_domain][$_flind]
+	    printf "  [%d]:\t%p (FREE LIST %d)\n", $_flind, $_fl, \
+		$_fl - vm_phys_free_queues
+	    set $_flind = $_flind + 1
+	end
+	set $_domain = $_domain + 1
+	printf "\n"
+    end
+end
+
+document vm_phys_lookup_lists
+Output the set of free list lookup lists
+end
+
+# Display rwx bits of a mode_t in ls -l format
+define print_mode
+    if ($arg0 & 0400)
+	printf "r"
+    else
+	printf "-"
+    end
+    if ($arg0 & 0200)
+	printf "w"
+    else
+	printf "-"
+    end
+    if ($arg0 & 0100)
+	printf "x"
+    else
+	printf "-"
+    end
+    if ($arg0 & 040)
+	printf "r"
+    else
+	printf "-"
+    end
+    if ($arg0 & 020)
+	printf "w"
+    else
+	printf "-"
+    end
+    if ($arg0 & 010)
+	printf "x"
+    else
+	printf "-"
+    end
+    if ($arg0 & 04)
+	printf "r"
+    else
+	printf "-"
+    end
+    if ($arg0 & 02)
+	printf "w"
+    else
+	printf "-"
+    end
+    if ($arg0 & 01)
+	printf "x"
+    else
+	printf "-"
+    end
+end
+
+define ksems
+    set $_i = 0
+    set $_foo = ($PTRWIDTH - 4) / 2
+    spaces $_foo
+    printf "KSEM"
+    set $_foo = $PTRWIDTH - 4 - $_foo
+    spaces $_foo
+    printf "     MODE    REFS  UID   GID  VALUE PATH\n"
+    while ($_i <= ksem_hash)
+	set $_ks = ksem_dictionary[$_i].lh_first
+	while ($_ks != 0)
+	    printf "%p: ", $_ks
+	    print_mode $_ks->km_ksem->ks_mode
+	    printf " %5d %5d %5d %5d %s\n", $_ks->km_ksem->ks_ref, \
+		$_ks->km_ksem->ks_uid, $_ks->km_ksem->ks_gid, \
+		$_ks->km_ksem->ks_value, $_ks->km_path
+	    set $_ks = $_ks->km_link.le_next
+	end
+	set $_i = $_i + 1
+    end
+end
+
+document ksems
+List POSIX semaphore objects.
+end
+
+define cpuset
+    printf "set=%p id=%-6u mask=", $arg0, $arg0->cs_id
+    set $_i = 0
+    set $_comma = 0
+    while ($_i < $_NCPUWORDS)
+	set $_j = 0
+	while ($_j < $_NCPUBITS)
+	    if ($arg0->cs_mask.__bits[$_i] & (1UL << $_j))
+		if ($_comma)
+		    printf ","
+		else
+		    set $_comma = 1
+		end
+		printf "%d", ($_i * $_NCPUBITS + $_j)
+	    end
+	    set $_j = $_j + 1
+	end
+	set $_i = $_i + 1
+    end
+    printf "\n"
+end
+
+define cpusets
+    set $_cs = cpuset_ids.lh_first
+    while ($_cs != 0)
+	if ($_cs->cs_parent == 0)
+	    set $_top = $_cs
+	    set $_indent = 0
+	    set $_quit = 0
+	    while ($_quit == 0)
+		cpuset $_cs
+		if ($_cs->cs_children.lh_first != 0)
+		     set $_cs = $_cs->cs_children.lh_first
+		     set $_indent = $_indent + 2
+		else
+		     set $_found = 0
+		     while ($_found == 0)
+			 if ($_cs == $_top)
+			     set $_found = 1
+			     set $_quit = 1
+			 else
+			     if ($_cs->cs_siblings.le_next != 0)
+				 set $_cs = $_cs->cs_siblings.le_next
+				 set $_found = 1
+			     else
+				 set $_cs = $_cs->cs_parent
+				 set $_indent = $_indent - 2
+			     end
+			 end
+		     end
+		end
+	    end
+	end
+	set $_cs = $_cs->cs_link.le_next
+    end
+end
+
+document cpusets
+List cpusets.
+end
+
+define big_objs
+    set $_obj = vm_object_list.tqh_first
+    while ($_obj != 0)
+	if ($_obj->resident_page_count > $arg0)
+	    printf "%p %8d ", $_obj, $_obj->resident_page_count
+	    print_vmo $_obj
+	    printf "\n"
+	end
+	set $_obj = $_obj->object_list.tqe_next
+    end
+end
+
+document big_objs
+Display VM objects larger than a specific size.
+end
