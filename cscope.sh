@@ -110,7 +110,23 @@ editf()
     if [ $(echo "$files" | wc -l) -ne 1 ]; then
         echo "editf: found multiple matches:"
         echo "$files"
+        return 1
     fi
 
     edit "$files"
+}
+
+editw()
+{
+    local file
+
+    [ $# -ne 1 ] && echo "Usage: editw <file>" >&2 && return 1
+
+    file=$(which "$1")
+    if [ $? -ne 0 ]; then
+        echo "editw: file '$1' not found in \$PATH"
+        return 1
+    fi
+
+    edit "$file"
 }
