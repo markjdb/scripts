@@ -34,12 +34,13 @@ FBSDRUN=/usr/sbin/bhyve
 DEFAULT_MEMSIZE=512
 DEFAULT_CPUS=2
 DEFAULT_TAPDEV=tap0
+DEFAULT_DISKDEVSIZE=8
 
 DEFAULT_VIRTIO_DISK="./diskdev"
 DEFAULT_ISOFILE="./release.iso"
 
 usage() {
-	echo "Usage: vmrun.sh [-hai][-m <memsize>][-d <disk file>][-I <location of installation iso>][-t <tapdev>] <vmname>"
+	echo "Usage: vmrun.sh [-hai][-m <memsize>][-d <disk file>][-I <location of installation iso>][-t <tapdev>][-s <diskdev size>] <vmname>"
 	echo "       -h: display this help message"
 	echo "       -a: force memory mapped local apic access"
 	echo "       -c: number of virtual cpus (default is ${DEFAULT_CPUS})"
@@ -47,6 +48,7 @@ usage() {
 	echo "       -i: force boot of the Installation CDROM image"
 	echo "       -I: Installation CDROM image location (default is ${DEFAULT_ISOFILE})"
 	echo "       -m: memory size in MB (default is ${DEFAULT_MEMSIZE}MB)"
+	echo "       -s: size of the disk device in GB (default is ${DEFAULT_DISKDEVSIZE})"
 	echo "       -t: tap device for virtio-net (default is $DEFAULT_TAPDEV)"
 	echo ""
 	echo "       This script needs to be executed with superuser privileges"
@@ -70,9 +72,10 @@ memsize=${DEFAULT_MEMSIZE}
 cpus=${DEFAULT_CPUS}
 virtio_diskdev=${DEFAULT_VIRTIO_DISK}
 tapdev=${DEFAULT_TAPDEV}
+diskdevsize=${DEFAULT_DISKDEVSIZE}
 apic_opt=""
 
-while getopts haic:I:m:d:t: c ; do
+while getopts haic:I:m:d:s:t: c ; do
 	case $c in
 	h)
 		usage
@@ -95,6 +98,9 @@ while getopts haic:I:m:d:t: c ; do
 	m)
 		memsize=${OPTARG}
 		;;
+	s)
+		diskdevsize=${OPTARG}
+		;;
 	t)
 		tapdev=${OPTARG}
 		;;
@@ -116,7 +122,7 @@ vmname="$1"
 if [ ! -f ${virtio_diskdev} ]; then
 	echo "virtio disk device file \"${virtio_diskdev}\" does not exist."
 	echo "Creating it ..."
-	truncate -s 8G ${virtio_diskdev} > /dev/null
+	truncate -s ${diskdevsize}G ${virtio_diskdev} > /dev/null
 fi
 
 if [ ! -r ${virtio_diskdev} ]; then
