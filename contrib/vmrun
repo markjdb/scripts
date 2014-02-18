@@ -62,8 +62,11 @@ fi
 
 kldstat -n vmm > /dev/null 2>&1 
 if [ $? -ne 0 ]; then
-	echo "vmm.ko is not loaded!"
-	exit 1
+	kldload vmm.ko >/dev/null 2>&1
+	if [ $? -ne 0 ]; then
+		echo "couldn't load vmm.ko"
+		exit 1
+	fi
 fi
 
 force_install=0
