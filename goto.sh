@@ -25,7 +25,7 @@ addgoto()
     fi
 
     label=$1
-    path=$2
+    path=$(realpath $2)
     oldpath=$(eval echo \$__goto_$label)
 
     [ -n "$oldpath" ] && echo "addgoto: redefining label from '$oldpath'" >&2
