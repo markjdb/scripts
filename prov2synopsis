@@ -36,13 +36,13 @@ while {![eof $fd]} {
             set state "args"
         }
     } elseif {$state == "args"} {
-        set type [split $line ":"]
-        if {[llength $type] != 2} {
+        set arg [split $line ":"]
+        if {[llength $arg] != 2 && [string trim $line] != "None"} {
             puts ".Fn [join $probe ":"] [join $args]"
             set state "findprobe"
             set args [list]
-        } else {
-            lappend args "\"[string trim [lindex $type 1]]\""
+        } elseif {[llength $arg] == 2} {
+            lappend args "\"[string trim [lindex $arg 1]]\""
         }
     }
 }
