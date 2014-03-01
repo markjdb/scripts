@@ -1,0 +1,48 @@
+#!/usr/bin/env tclsh8.6
+
+if {$::argc != 1} {
+    puts "usage: [file tail [info script]] <provider>"
+    exit 1
+} elseif {$::tcl_platform(user) != "root"} {
+    puts stderr "[file tail [info script]]: need to run as root"
+    exit 1
+}
+
+set fd [open "|dtrace -lv -P [lindex $::argv 0]"]
+fconfigure $fd -buffering line
+
+set header [gets $fd]
+set provi [expr [string first "ID" $header] + 2]
+set modi  [expr [string first "PROVIDER" $header] + 8]
+set funci [expr [string first "MODULE" $header] + 6]
+set namei [expr [string first "NAME" $header] - 1]
+
+set state findprobe
+set args [list]
+while {![eof $fd]} {
+    set line [gets $fd]
+    if {$state == "findprobe"} {
+        set len [string length $line]
+        set probe [list [string trim [string range $line $provi $modi]] \
+                        [string trim [string range $line $modi $funci]] \
+                        [string trim [string range $line $funci $namei]] \
+                        [string trim [string range $line $namei [string length $line]]]]
+        if {[lindex $probe 1] == "kernel"} {
+            lset probe 1 ""
+        }
+        set state "findargs"
+    } elseif {$state == "findargs"} {
+        if {[string trim $line] == "Argument Types"} {
+            set state "args"
+        }
+    } elseif {$state == "args"} {
+        set type [split $line ":"]
+        if {[llength $type] != 2} {
+            puts ".Fn [join $probe ":"] [join $args]"
+            set state "findprobe"
+            set args [list]
+        } else {
+            lappend args "\"[string trim [lindex $type 1]]\""
+        }
+    }
+}
