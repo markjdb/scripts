@@ -1,0 +1,22 @@
+#!/bin/sh
+
+log()
+{
+    echo "$(basename $0): $1"
+}
+
+IFS='
+'
+
+for file in $@; do
+    echo "$file"
+    if ! expr "$file" : '.*\.m4a' >/dev/null; then
+        log "skipping non-m4a file $file"
+        continue
+    fi
+
+    ffmpeg -i "$file" -ab 256k "${file%m4a}mp3"
+    if [ $? -ne 0 ]; then
+        log "failed to convert $file"
+    fi
+done
