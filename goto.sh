@@ -5,7 +5,7 @@ goto()
     [ $# -ne 1 ] && echo "Usage: goto <label>" >&2 && return 1
 
     name=__goto_$1
-    path=$(eval echo \$$name)
+    eval path=\$$name
     if [ -n "$path" ]; then
         cd "$path"
     else
@@ -26,7 +26,7 @@ addgoto()
 
     label=$1
     path=$(realpath $2)
-    oldpath=$(eval echo \$__goto_$label)
+    eval oldpath=\$__goto_$label
 
     [ -n "$oldpath" ] && echo "addgoto: redefining label from '$oldpath'" >&2
 
@@ -39,7 +39,7 @@ addgoto()
 listgotos()
 {
     # There's probably a better way to do this. :)
-    env | grep '^__goto_' | sed -e 's/^__goto_//' | tr '=' ' ' | column -t
+    env | grep '^__goto_' | sed -e 's/^__goto_//' | tr '=' ' ' | sort | column -t
 }
 
 sourcegotos()
@@ -57,7 +57,7 @@ sourcegotos()
             continue
         fi
 
-        eval export __goto_${label}=$path
+        eval __goto_${label}=$path
 
         i=$(($i + 1))
     done < ${HOME}/.gotos
