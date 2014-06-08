@@ -1,0 +1,65 @@
+#!/usr/bin/env perl
+
+use strict q(vars);
+use warnings;
+
+use Data::Dump qw(dump);
+use Net::Twitter;
+use Text::CSV;
+
+our $consumer_key          = q(key);
+our $consumer_secret       = q(secret);
+our $token;
+our $token_secret;
+
+sub restore_tokens {
+  open my $fh, '<', "oauth" or die qq(failed to open file; $!);
+  my ($access_token, $access_token_secret) = map {
+      chomp;
+      s/^[^:]+:// if defined and length;
+      $_
+  } <$fh>;
+  close $fh;
+  return ($access_token, $access_token_secret);
+}
+
+($token,$token_secret) = (restore_tokens);
+die "Not Authorized" unless $token && $token_secret;
+
+my $nt = Net::Twitter->new(
+    traits   => [
+        qw/OAuth API::RESTv1_1/,
+    ],
+    consumer_key        => $consumer_key,
+    consumer_secret     => $consumer_secret,
+    access_token        => $token,
+    access_token_secret => $token_secret,
+    ssl                 => 1,
+);
+
+my $csv = Text::CSV->new({binary => 1}) or die "CSV init error: " . Text::CSV->error_diag();
+open my $fh, ">&:encoding(UTF-8)", STDOUT or die "couldn't dup stdout: $!";
+$csv->eol("\n");
+
+my @cols = qw(created_at favourites_count followers_count friends_count location name screen_name statuses_count);
+$csv->print($fh, \@cols);
+
+for (my $cursor = -1, my $i = 1, my $r; $cursor; $i++) {
+    my $r = $nt->followers_list({cursor => $cursor, count => 200});
+    if (ref($r->{users}) eq 'ARRAY') {
+        foreach (@{$r->{users}}) {
+            my @vals = @$_{@cols};
+            $csv->print($fh, \@vals);
+        }
+    }
+
+    $cursor = $r->{next_cursor};
+    undef $r;
+    if ($i % 15 == 0) {
+        sleep(15 * 60);
+    }
+}
+
+close($fh);
+
+exit(0);
