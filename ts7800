@@ -1,0 +1,105 @@
+#!/bin/sh
+
+# Some functions for managing my TS7800 from FreeBSD.
+
+err()
+{
+    echo "$(basename $0): $1" >&2
+    exit 1
+}
+
+usage()
+{
+    cat <<__EOF__
+Usage: $(basename $0) <cmd> <args>
+
+Commands:
+  uboot      -- Rebuild the u-boot bootloader.
+
+  kernel     -- Build a FreeBSD kernel for the TS7800 and install it to
+                ${HOME}/tftp/TS7800.
+
+Options:
+  -c         -- Clean before building anything.
+__EOF__
+    exit 1
+}
+
+kernel()
+{
+    local ret
+
+    if [ $# -gt 1 -o \( $# -eq 1 -a "$1" != "-c" \) ]; then
+        usage
+    elif [ $# -eq 0 ]; then
+        export ARGS="-DKERNFAST -DNO_CLEAN"
+    else
+        export ARGS=""
+    fi
+
+    (
+    set -e
+    cd ${HOME}/src/freebsd
+
+    dst=${HOME}/tftp/TS7800
+    mkdir -p $dst
+
+    nice make kernel-toolchain -j8 TARGET_ARCH=arm __MAKE_CONF=/dev/null \
+        SRCCONF=/dev/null ${ARGS}
+    nice make buildkernel -j8 TARGET_ARCH=arm __MAKE_CONF=/dev/null \
+        SRCCONF=/dev/null KERNCONF=TS7800 ${ARGS}
+    cp -f /usr/obj/arm.arm/home/mark/src/freebsd/sys/TS7800/kernel.bin $dst
+    )
+    ret=$?
+
+    unset ARGS
+    return $ret
+}
+
+uboot()
+{
+    local ret
+
+    if [ $# -gt 1 -o \( $# -eq 1 -a "$1" != "-c" \) ]; then
+        usage
+    elif [ "$1" = "-c" ]; then
+        export CLEAN=yes
+    else
+        export CLEAN=
+    fi
+
+    (
+    set -e
+    cd ${HOME}/src/u-boot
+
+    export CROSS_COMPILE=arm-none-eabi-
+    if [ -n "$CLEAN" ]; then
+        gmake distclean
+        gmake ts7800_config
+    fi
+    nice gmake ts7800 -j8
+    )
+    ret=$?
+
+    unset CLEAN
+    return $?
+}
+
+# Execution starts here.
+
+if [ $# -eq 0 ]; then
+    usage
+fi
+
+case $1 in
+kernel|uboot)
+    cmd=$1
+    shift
+    ;;
+*)
+    usage
+    ;;
+esac
+
+eval \$cmd $@
+exit $?
