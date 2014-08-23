@@ -116,6 +116,16 @@ editf()
     edit "$files"
 }
 
+editg()
+{
+    local _editor
+
+    _editor=$EDITOR
+    EDITOR=gvim
+    edit $@
+    EDITOR=$_editor
+}
+
 editw()
 {
     local file
