@@ -58,6 +58,10 @@ regendb()
             done
             cat $tmpf >> cscope.files
 
+            if [ ! -f ../filelist ]; then
+                touch ../filelist
+            fi
+
             cscope -b -q -k
             case $(uname) in
             Linux)
