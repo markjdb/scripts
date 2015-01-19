@@ -1,0 +1,17 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+
+proc:::exec-success
+{
+	procs[pid] = curpsinfo->pr_psargs;
+	ts[pid] = timestamp;
+}
+
+proc:::exit
+/ts[pid]/
+{
+	printf("%10dus:\t%s\n", (timestamp - ts[pid]) / 1000, procs[pid]);
+	procs[pid] = 0;
+	ts[pid] = 0;
+}
