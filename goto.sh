@@ -38,8 +38,7 @@ addgoto()
 
 listgotos()
 {
-    # There's probably a better way to do this. :)
-    env | grep '^__goto_' | sed -e 's/^__goto_//' | tr '=' ' ' | sort | column -t
+    cat ${HOME}/.gotos
 }
 
 sourcegotos()
