@@ -44,10 +44,10 @@ _regendb()
 {
     local _DB
 
-    if [ -z "${prefix}" ]; then
+    if [ -z "${flavour}" ]; then
         _DB=${DB}
     else
-        _DB=${DB}-${prefix}
+        _DB=${DB}-${flavour}
     fi
 
     mkdir -p ${DB_DIR}/${_DB}
@@ -60,10 +60,10 @@ _regendb()
 
     findargs='( -name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp )'
     for dir in ${SRCDIRS}; do
-        find $(readlink -f ${prefixdir}/${dir}) $findargs -exec readlink -f {} \; >> $tmpf
+        find $(readlink -f ${flavourdir}/${dir}) $findargs -exec readlink -f {} \; >> $tmpf
     done
     for dir in ${DEPDIRS}; do
-        find $(readlink -f ${prefixdir}/${dir}) $findargs -exec readlink -f {} \; >> cscope.files
+        find $(readlink -f ${flavourdir}/${dir}) $findargs -exec readlink -f {} \; >> cscope.files
     done
     cat $tmpf >> cscope.files
 
@@ -87,14 +87,14 @@ _regendb()
     cat $tmpf | sed 's/$/ '${_DB}'/' >> ${DB_DIR}/filelist
     rm -f $tmpf
 
-    [ -n "${prefix}" ] && echo "${DB}" > db
+    [ -n "${flavour}" ] && echo "${DB}" > db
 
     cscope -b -q -k &
 }
 
 regendb()
 {
-    local DB_DIR DB _DB dirs findargs ret prefix prefixdir prefixes tmpf
+    local DB_DIR DB _DB dirs findargs flavour flavourdir flavours ret tmpf
 
     pushd . >/dev/null
 
@@ -118,29 +118,29 @@ regendb()
 
         if [ -f db -a -r db ]; then
             _DB=$(cat db)
-            prefixes=${DB#${_DB}-}
+            flavours=${DB#${_DB}-}
             DB=$_DB
 
             cd ${DB_DIR}/${_DB}
-        elif [ -f prefixes -a -r prefixes ]; then
-            prefixes=$(cat prefixes)
+        elif [ -f flavours -a -r flavours ]; then
+            flavours=$(cat flavours)
         else
-            prefixes=
+            flavours=
         fi
 
         . dirs
 
-        if [ -z "${prefixes}" ]; then
-            prefixdir=
+        if [ -z "${flavours}" ]; then
+            flavourdir=
             _regendb
             if [ $? -ne 0 ]; then
                 ret=1
             fi
         else
-            for prefix in ${prefixes}; do
-                prefixdir=$(eval echo $(grep "^${prefix}[[:space:]]" ${DB_DIR}/prefixes | awk '{print $2}'))
-                if [ -z "$prefixdir" ]; then
-                    echo "regendb: unknown prefix '${prefix}'" >&2
+            for flavour in ${flavours}; do
+                flavourdir=$(eval echo $(grep "^${flavour}[[:space:]]" ${DB_DIR}/trees | awk '{print $2}'))
+                if [ -z "$flavourdir" ]; then
+                    echo "regendb: unknown flavour '${flavour}'" >&2
                     continue
                 fi
 
