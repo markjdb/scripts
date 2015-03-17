@@ -1,7 +1,24 @@
+adddb()
+{
+    [ $# -ne 2 ] && echo "Usage: adddb <db name> <path>" >&2 && return 1
+
+    local DB_DIR DB
+
+    DB_DIR=${HOME}/src/cscope
+    DB=$1
+
+    [ -d ${DB_DIR}/${DB} ] && echo "adddb: db '${DB}' already exists" >&2 && return 1
+    mkdir -p ${DB_DIR}/${DB}
+
+    echo "SRCDIRS=\"$(readlink -f $2)\"" > ${DB_DIR}/${DB}/dirs
+
+    regendb ${DB}
+}
+
 listdb()
 {
     [ $# -ne 0 ] && echo "Usage: listdb" 1>&2 && return 1
-    ls -1 ${HOME}/src/cscope
+    find ${HOME}/src/cscope -mindepth 2 -maxdepth 2 -name db | xargs dirname
 }
 
 setdb()
@@ -23,61 +40,125 @@ setdb()
     return 1
 }
 
+_regendb()
+{
+    local _DB
+
+    if [ -z "${prefix}" ]; then
+        _DB=${DB}
+    else
+        _DB=${DB}-${prefix}
+    fi
+
+    mkdir -p ${DB_DIR}/${_DB}
+    cd ${DB_DIR}/${_DB}
+
+    echo "regendb: regenerating ${_DB}" >&2
+
+    truncate -s 0 cscope.files
+    tmpf=$(mktemp -t cscope.sh.XXXXXX)
+
+    findargs='( -name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp )'
+    for dir in ${SRCDIRS}; do
+        find $(readlink -f ${prefixdir}/${dir}) $findargs -exec readlink -f {} \; >> $tmpf
+    done
+    for dir in ${DEPDIRS}; do
+        find $(readlink -f ${prefixdir}/${dir}) $findargs -exec readlink -f {} \; >> cscope.files
+    done
+    cat $tmpf >> cscope.files
+
+    if [ ! -f ${DB_DIR}/filelist ]; then
+        touch ${DB_DIR}/filelist
+    fi
+
+    case $(uname) in
+    Linux)
+        sed -i -e '/ '${_DB}'$/d' ${DB_DIR}/filelist
+        ;;
+    FreeBSD)
+        sed -i '' -e '/ '${_DB}'$/d' ${DB_DIR}/filelist
+        ;;
+    *)
+        echo "regendb: unhandled OS" >&2
+        return 1
+        ;;
+    esac
+
+    cat $tmpf | sed 's/$/ '${_DB}'/' >> ${DB_DIR}/filelist
+    rm -f $tmpf
+
+    [ -n "${prefix}" ] && echo "${DB}" > db
+
+    cscope -b -q -k &
+}
+
 regendb()
 {
-    local DB_DIR DB dirs
+    local DB_DIR DB _DB dirs findargs ret prefix prefixdir prefixes tmpf
+
+    pushd . >/dev/null
+
+    ret=0
 
     DB_DIR=${HOME}/src/cscope
     if [ $# -eq 0 ]; then
-        dirs="find $DB_DIR -type d -depth 1 -exec basename {} \;"
+        dirs="find $DB_DIR -name dirs -type f -depth 2 -exec dirname {} \;"
     else
         dirs="echo $@"
     fi
 
     for DB in $(eval $dirs); do
-        echo "Regenerating cscope database for '$DB'" 1>&2
         if [ ! -d "${DB_DIR}/${DB}" ]; then
-            echo "regendb: unknown src tree '$DB'" 1>&2
-            return 1
+            echo "regendb: unknown src tree '$DB'" >&2
+            ret=1
+            break
         fi
-        (
-            cd ${DB_DIR}/${DB}
-            . dirs
-            truncate -s 0 cscope.files
-            tmpf=$(mktemp -t cscope.sh.XXXXXX)
+
+        cd ${DB_DIR}/${DB}
+
+        if [ -f db -a -r db ]; then
+            _DB=$(cat db)
+            prefixes=${DB#${_DB}-}
+            DB=$_DB
+
+            cd ${DB_DIR}/${_DB}
+        elif [ -f prefixes -a -r prefixes ]; then
+            prefixes=$(cat prefixes)
+        else
+            prefixes=
+        fi
+
+        . dirs
+
+        if [ -z "${prefixes}" ]; then
+            prefixdir=
+            _regendb
             if [ $? -ne 0 ]; then
-                tmpf=/tmp/cscope.$$
+                ret=1
             fi
+        else
+            for prefix in ${prefixes}; do
+                prefixdir=$(eval echo $(grep "^${prefix}[[:space:]]" ${DB_DIR}/prefixes | awk '{print $2}'))
+                if [ -z "$prefixdir" ]; then
+                    echo "regendb: unknown prefix '${prefix}'" >&2
+                    continue
+                fi
 
-            findargs='( -name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp )'
-            for dir in ${SRCDIRS}; do
-                find $(readlink -f $dir) $findargs -exec readlink -f {} \; >> $tmpf
+                _regendb
+                if [ $? -ne 0 ]; then
+                    ret=1
+                fi
             done
-            for dir in ${DEPDIRS}; do
-                find $(readlink -f $dir) $findargs -exec readlink -f {} \; >> cscope.files
-            done
-            cat $tmpf >> cscope.files
+        fi
 
-            if [ ! -f ../filelist ]; then
-                touch ../filelist
-            fi
-
-            cscope -b -q -k
-            case $(uname) in
-            Linux)
-                sed -i -e '/ '${DB}'$/d' ../filelist
-                ;;
-            FreeBSD)
-                sed -i '' -e '/ '${DB}'$/d' ../filelist
-                ;;
-            *)
-                echo "regendb: unhandled OS" >&2
-                ;;
-            esac
-            cat $tmpf | sed 's/$/ '${DB}'/' >> ../filelist
-            rm -f $tmpf
-        )
+        [ $ret -eq 0 ] || break
     done
+
+    unset SRCDIRS DEPDIRS
+
+    wait
+    popd >/dev/null
+    return $ret
 }
 
 unsetdb()
