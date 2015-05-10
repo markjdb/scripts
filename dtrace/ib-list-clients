@@ -1,0 +1,21 @@
+#!/usr/sbin/dtrace -s
+
+BEGIN
+{
+	device = (struct ib_device *)$1;
+	client = (struct ib_client_data *)device->client_data_list.next;
+	print(*client);
+}
+
+fbt::kern_ioctl:entry
+/client != (void *)&device->client_data_list/
+{
+	client = (struct ib_client_data *)client->list.next;
+	print(*client);
+}
+
+fbt::kern_ioctl:entry
+/client == (void *)&device->client_data_list/
+{
+	exit(0);
+}
