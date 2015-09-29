@@ -683,7 +683,7 @@ define kldstat-v
     spaces $foo
     printf "Size     Name\n"
     while ($kld != 0)
-  	printf "%2d %4d 0x%0l8x %-8x %s\n", \
+  	printf "%2d %4d 0x%08lx %-8x %s\n", \
 	    $kld->id, $kld->refs, $kld->address, $kld->size, $kld->filename
 	printf "        Contains modules:\n"
 	printf "                Id Name\n"
@@ -832,14 +832,17 @@ define printpcpu
 	printf "none\n"
     end
     printf "switchticks  = %lld\n", $arg0->pc_switchticks
+    printf "pdpages = %u\n", $arg0->pc_cnt.v_pdpages
 end
 
 define pcpu
     pcpu_first $p
+    set $pdpages = 0
     while ($p != 0)
 	if ($__i386__ && $p == 0xffc00000 || $p == 0xffe00000)
 	    set $p = (struct pcpu *)cpu0prvpage
 	end
+	set $pdpages = $pdpates + $p->pc_cnt.v_pdpages
 	if ($p->pc_cpuid == $arg0)
 	    printpcpu $p
 	    set $p = 0
@@ -847,6 +850,7 @@ define pcpu
 	    pcpu_next $p
 	end
     end
+    printf "pdpages total is %u\n", $pdpages
 end
 
 document pcpu
