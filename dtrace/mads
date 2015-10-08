@@ -1,0 +1,126 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+
+inline string mad_class[int class] =
+	class == 0x01 ?		"LID SM" : /* LID-routed SM */
+	class == 0x81 ?		"DR SM" : /* direct-routed SM */
+	class == 0x03 ?		"SA" : /* subnet administration */
+	class == 0x04 ?		"PM" : /* performance management */
+	class == 0x05 ?		"BM" : /* baseboard management */
+	class == 0x06 ?		"DM" : /* device management */
+	class == 0x07 ?		"CM" : /* communication management */
+	class == 0x08 ?		"SNMP tunnel" :
+	"<unknown>";
+
+inline string mad_attr[int class, int attr] =
+	(class == 0x01 || class == 0x81) ? (
+	    /* Subnet management attributes. */
+	    attr == 0x01 ?		"Class Port Info" :
+	    attr == 0x02 ?		"Notice" :
+	    attr == 0x03 ?		"Inform Info" :
+	    attr == 0x10 ?		"Node Desc" :
+	    attr == 0x11 ?		"Node Info" :
+	    attr == 0x12 ?		"Switch Info" :
+	    attr == 0x14 ?		"GUID Info" :
+	    attr == 0x15 ?		"Port Info" :
+	    attr == 0x16 ?		"PKey Table" :
+	    attr == 0x17 ?		"SL to VL Table" :
+	    attr == 0x19 ?		"Linear Forwarding Table" :
+	    attr == 0x1b ?		"MCast Forwarding Table" :
+	    attr == 0x20 ?		"SM Info" :
+	    "<unknown>") :
+	class == 0x03 ? (
+	    /* Subnet administration attributes. */
+	    attr == 0x01 ?		"Class Port Info" :
+	    attr == 0x02 ?		"Notice" :
+	    attr == 0x03 ?		"Inform Info" :
+	    attr == 0x11 ?		"Node Record" :
+	    attr == 0x12 ?		"Port Info Record" :
+	    attr == 0x13 ?		"SLtoVL Mapping Record" :
+	    attr == 0x14 ?		"Switch Info Record" :
+	    attr == 0x18 ?		"SM Info Record" :
+	    attr == 0x35 ?		"Path Record" :
+	    attr == 0x38 ?		"MCast Member Record" :
+	    "<unknown>") :
+	class == 0x07 ? (
+	    /* Connection management attributes. */
+	    attr == 0x10 ?		"Connect Request" :
+	    attr == 0x12 ?		"Connect Reject" :
+	    attr == 0x13 ?		"Connect Reply" :
+	    attr == 0x14 ?		"Ready To Use" :
+	    attr == 0x15 ?		"Disconnect Request" :
+	    attr == 0x19 ?		"Load Alternate Path" :
+	    attr == 0x1a ?		"Load Alternate Path Resp" :
+	    "<unknown>") :
+	"<unknown>";
+
+inline string mad_method[int method] = 
+	method == 0x01 ?	"GET" :
+	method == 0x81 ?	"GET RESP" :
+	method == 0x02 ?	"SET" :
+	method == 0x03 ?	"SEND" :
+	method == 0x05 ?	"TRAP" :
+	method == 0x06 ?	"REPORT" :
+	method == 0x07 ?	"TRAP REPRESS" :
+	method == 0x86 ?	"REPORT RESP" :
+	"<unknown>";
+
+ibmad:::post-send
+{
+	this->mad = &((struct ib_mad *)args[1]->send_buf.mad)->mad_hdr;
+	printf("%Y: posting MAD (TID %x):\t%s, attr %s (0x%x), %s\n",
+	    walltimestamp,
+	    this->mad->tid,
+	    mad_class[this->mad->mgmt_class],
+	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
+	    ntohs(this->mad->attr_id),
+	    mad_method[this->mad->method]);
+}
+
+ibmad:::post-send
+/((struct ib_mad *)args[1]->send_buf.mad)->mad_hdr.method == 0x01/
+{
+	/* Only record timestamps for MADs that expect replies. */
+	this->mad = &((struct ib_mad *)args[1]->send_buf.mad)->mad_hdr;
+	xacts[this->mad->tid] = timestamp;
+}
+
+ibmad:::receive
+/xacts[args[0]->mad.mad.mad_hdr.tid] == 0/
+{
+	this->mad = &args[0]->mad.mad.mad_hdr;
+	printf("%Y: received MAD (TID %x):\t%s, attr %s (0x%x), %s\n",
+	    walltimestamp,
+	    this->mad->tid,
+	    mad_class[this->mad->mgmt_class],
+	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
+	    ntohs(this->mad->attr_id),
+	    mad_method[this->mad->method]);
+}
+
+ibmad:::receive
+/xacts[args[0]->mad.mad.mad_hdr.tid] != 0/
+{
+	this->mad = &args[0]->mad.mad.mad_hdr;
+	printf("%Y: received MAD (TID %x):\t%s, attr %s (0x%x), %s, reply after %dus\n",
+	    walltimestamp,
+	    this->mad->tid,
+	    mad_class[this->mad->mgmt_class],
+	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
+	    ntohs(this->mad->attr_id),
+	    mad_method[this->mad->method],
+	    (timestamp - xacts[this->mad->tid]) / 1000);
+	xacts[this->mad->tid] = 0;
+}
+
+ibmad:::timeout-send
+/xacts[((struct ib_mad *)args[0]->send_buf.mad)->mad_hdr.tid] != 0/
+{
+	this->mad = &((struct ib_mad *)args[0]->send_buf.mad)->mad_hdr;
+	printf("%Y: MAD (TID %x) timed out after %dus\n",
+	    walltimestamp,
+	    this->mad->tid,
+	    (timestamp - xacts[this->mad->tid]) / 1000);
+	xacts[this->mad->tid] = 0;
+}
