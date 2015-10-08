@@ -27,7 +27,7 @@
 
 # This script is used to submit a series of git commits to Differential.  Each
 # commit is submitted as a separate review.  For each review, this script will
-# create a branch called review_DXXXX (e.g. review_D2185 for Differential
+# create a branch called review/DXXXX (e.g. review_D2185 for Differential
 # revision D2185).  When you need to make a change to a review, checkout the
 # review_D2185 branch, commit your change with "git commit --fixup HEAD".  To\
 # upload the change to Differential, use the command:
@@ -72,12 +72,12 @@ create_review()
 	echo "Test Plan:" >> $arc_msg
 	cat $test_plan >> $arc_msg
 	echo >> $arc_msg
-	#echo "Reviewers:" >> $arc_msg
-	#echo "$reviewers" >> $arc_msg
-	#echo >> $arc_msg
-	#echo "Subscribers:" >> $arc_msg
-	#echo "$cc_list" >> $arc_msg
-	#echo >> $arc_msg
+	echo "Reviewers:" >> $arc_msg
+	echo "$reviewers" >> $arc_msg
+	echo >> $arc_msg
+	echo "Subscribers:" >> $arc_msg
+	echo "$cc_list" >> $arc_msg
+	echo >> $arc_msg
 
 	arc list > $phab_before
 	yes | env EDITOR=true arc diff --create --allow-untracked HEAD~
@@ -92,9 +92,9 @@ create_review()
 		error "Could not get review ID"
 	fi
 
-	git branch review_${phab_id}_base HEAD~
+	git branch review/${phab_id}_base HEAD~
 
-	git checkout -b review_$phab_id
+	git checkout -b review/$phab_id
 	cat - <<EOF | git commit --allow-empty -F -
 squash! $headline
 
