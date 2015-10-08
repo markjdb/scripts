@@ -68,10 +68,10 @@ inline string mad_method[int method] =
 
 ibmad:::post-send
 {
-	this->mad = &((struct ib_mad *)args[1]->send_buf.mad)->mad_hdr;
-	printf("%Y: posting MAD (TID %x):\t%s, attr %s (0x%x), %s\n",
+	this->mad = &((struct ib_mad *)args[0]->send_buf.mad)->mad_hdr;
+	printf("%Y: posting MAD\t(TID %x, port %d):\t%s, attr %s (0x%x), %s\n",
 	    walltimestamp,
-	    this->mad->tid,
+	    this->mad->tid, args[0]->mad_agent_priv->agent.port_num,
 	    mad_class[this->mad->mgmt_class],
 	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
 	    ntohs(this->mad->attr_id),
@@ -79,20 +79,20 @@ ibmad:::post-send
 }
 
 ibmad:::post-send
-/((struct ib_mad *)args[1]->send_buf.mad)->mad_hdr.method == 0x01/
+/((struct ib_mad *)args[0]->send_buf.mad)->mad_hdr.method == 0x01/
 {
 	/* Only record timestamps for MADs that expect replies. */
-	this->mad = &((struct ib_mad *)args[1]->send_buf.mad)->mad_hdr;
+	this->mad = &((struct ib_mad *)args[0]->send_buf.mad)->mad_hdr;
 	xacts[this->mad->tid] = timestamp;
 }
 
 ibmad:::receive
-/xacts[args[0]->mad.mad.mad_hdr.tid] == 0/
+/xacts[args[1]->mad.mad.mad_hdr.tid] == 0/
 {
-	this->mad = &args[0]->mad.mad.mad_hdr;
-	printf("%Y: received MAD (TID %x):\t%s, attr %s (0x%x), %s\n",
+	this->mad = &args[1]->mad.mad.mad_hdr;
+	printf("%Y: received MAD\t(TID %x, port %d):\t%s, attr %s (0x%x), %s\n",
 	    walltimestamp,
-	    this->mad->tid,
+	    this->mad->tid, args[0]->port_num,
 	    mad_class[this->mad->mgmt_class],
 	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
 	    ntohs(this->mad->attr_id),
@@ -100,12 +100,12 @@ ibmad:::receive
 }
 
 ibmad:::receive
-/xacts[args[0]->mad.mad.mad_hdr.tid] != 0/
+/xacts[args[1]->mad.mad.mad_hdr.tid] != 0/
 {
-	this->mad = &args[0]->mad.mad.mad_hdr;
-	printf("%Y: received MAD (TID %x):\t%s, attr %s (0x%x), %s, reply after %dus\n",
+	this->mad = &args[1]->mad.mad.mad_hdr;
+	printf("%Y: received MAD\t(TID %x, port %d):\t%s, attr %s (0x%x), %s, reply after %dus\n",
 	    walltimestamp,
-	    this->mad->tid,
+	    this->mad->tid, args[0]->port_num,
 	    mad_class[this->mad->mgmt_class],
 	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
 	    ntohs(this->mad->attr_id),
