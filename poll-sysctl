@@ -1,0 +1,13 @@
+#!/bin/sh
+
+sysctl -n $1 >/dev/null || exit 1
+
+prev=0
+max=0
+while true; do
+    val=$(sysctl -n $1)
+    echo "max: ${max}, total: ${val}, delta: $(($val - $prev))"
+    prev=$val
+    [ $val -gt $max ] && max=$val
+    sleep 0.5
+done
