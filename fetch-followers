@@ -41,7 +41,7 @@ my $csv = Text::CSV->new({binary => 1}) or die "CSV init error: " . Text::CSV->e
 open my $fh, ">&:encoding(UTF-8)", STDOUT or die "couldn't dup stdout: $!";
 $csv->eol("\n");
 
-my @cols = qw(created_at favourites_count followers_count friends_count location name screen_name statuses_count);
+my @cols = qw(created_at favourites_count followers_count friends_count location name screen_name statuses_count description);
 $csv->print($fh, \@cols);
 
 for (my $cursor = -1, my $i = 1, my $r; $cursor; $i++) {
