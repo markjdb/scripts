@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Ensure that auto gc doesn't run when on battery power.
+# git is self-important and wants us to define a symlink to this script
+# at .git/hooks/pre-auto-gc in every repo.
+
+set -e
+
+state=$(sysctl -n hw.acpi.battery.state)
+if [ "$state" -eq 1 ]; then
+    exit 1
+fi
+exit 0
