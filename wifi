@@ -4,6 +4,7 @@ case $(uname) in
 FreeBSD)
     case $(hostname) in
     charmander)
+        interf=ath0
         if ifconfig ath0 >/dev/null 2>&1; then
             interf=ath0
         fi
