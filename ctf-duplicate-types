@@ -1,0 +1,42 @@
+#!/bin/sh
+
+err()
+{
+    echo "$(basename $0): $1"
+    exit 1
+}
+
+usage()
+{
+    echo "usage: $(basename $0) -t <type name> <objs ...>"
+    exit 1
+}
+
+if [ $# -lt 3 -o "$1" != "-t" ]; then
+    usage
+fi
+
+TYPE=$2
+shift; shift
+
+objs=
+for obj in ${@}; do
+    if ctfdump -t $obj 2>/dev/null | grep -q "$TYPE"; then
+        objs="$obj $objs"
+    fi
+done
+
+target=${objs%% *}
+objs=${objs#* }
+
+candidates=$target
+for obj in ${objs}; do
+    ctfmerge -L VERSION -g -o $target $target $obj || \
+        err "failed to merge $target and $obj"
+    echo "merged $target and $obj"
+    candidates="$obj $candidates"
+    count=$(ctfdump -t $target | grep -q "$TYPE" | wc -l)
+    if [ $count -gt 1 ]; then
+        err "found duplicate instances of $TYPE"
+    fi
+done
