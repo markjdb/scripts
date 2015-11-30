@@ -50,6 +50,7 @@ inline string mad_attr[int class, int attr] =
 	    attr == 0x13 ?		"Connect Reply" :
 	    attr == 0x14 ?		"Ready To Use" :
 	    attr == 0x15 ?		"Disconnect Request" :
+	    attr == 0x16 ?		"Disconnect Reply" :
 	    attr == 0x19 ?		"Load Alternate Path" :
 	    attr == 0x1a ?		"Load Alternate Path Resp" :
 	    "<unknown>") :
@@ -69,12 +70,12 @@ inline string mad_method[int method] =
 ibmad:::post-send
 {
 	this->mad = &((struct ib_mad *)args[0]->send_buf.mad)->mad_hdr;
-	printf("%Y: posting MAD\t(TID %x, port %d):\t%s, attr %s (0x%x), %s\n",
+	printf("%Y: posting MAD\t(TID %x, port %d):\t%s, attr %s:%x (0x%x), %s\n",
 	    walltimestamp,
 	    this->mad->tid, args[0]->mad_agent_priv->agent.port_num,
 	    mad_class[this->mad->mgmt_class],
 	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
-	    ntohs(this->mad->attr_id),
+	    ntohl(this->mad->attr_mod), ntohs(this->mad->attr_id),
 	    mad_method[this->mad->method]);
 }
 
@@ -90,12 +91,12 @@ ibmad:::receive
 /xacts[args[1]->mad.mad.mad_hdr.tid] == 0/
 {
 	this->mad = &args[1]->mad.mad.mad_hdr;
-	printf("%Y: received MAD\t(TID %x, port %d):\t%s, attr %s (0x%x), %s\n",
+	printf("%Y: received MAD\t(TID %x, port %d):\t%s, attr %s:%x (0x%x), %s\n",
 	    walltimestamp,
 	    this->mad->tid, args[0]->port_num,
 	    mad_class[this->mad->mgmt_class],
 	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
-	    ntohs(this->mad->attr_id),
+	    ntohl(this->mad->attr_mod), ntohs(this->mad->attr_id),
 	    mad_method[this->mad->method]);
 }
 
@@ -103,12 +104,12 @@ ibmad:::receive
 /xacts[args[1]->mad.mad.mad_hdr.tid] != 0/
 {
 	this->mad = &args[1]->mad.mad.mad_hdr;
-	printf("%Y: received MAD\t(TID %x, port %d):\t%s, attr %s (0x%x), %s, reply after %dus\n",
+	printf("%Y: received MAD\t(TID %x, port %d):\t%s, attr %s:%x (0x%x), %s, reply after %dus\n",
 	    walltimestamp,
 	    this->mad->tid, args[0]->port_num,
 	    mad_class[this->mad->mgmt_class],
 	    mad_attr[this->mad->mgmt_class, ntohs(this->mad->attr_id)],
-	    ntohs(this->mad->attr_id),
+	    ntohl(this->mad->attr_mod), ntohs(this->mad->attr_id),
 	    mad_method[this->mad->method],
 	    (timestamp - xacts[this->mad->tid]) / 1000);
 	xacts[this->mad->tid] = 0;
