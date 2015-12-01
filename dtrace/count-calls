@@ -2,15 +2,14 @@
 
 #pragma D option quiet
 
-int ccount;
-
 fbt::$1:entry
 {
-	ccount += 1;
+	@count = count();
 }
 
 profile:::tick-1sec
 {
-	printf("%Y: saw %d calls\n", walltimestamp, ccount);
-	ccount = 0;
+	printf("%Y: ", walltimestamp);
+	printa("saw %@d calls\n", @count);
+	clear(@count);
 }
