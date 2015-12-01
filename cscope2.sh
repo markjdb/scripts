@@ -82,7 +82,7 @@ _csc-setdb()
 # Private function to generate a DB given its name and the base dir. The public
 # version of this function takes only the base dir as its argument.
 #
-# This function should be run in a subshell.
+# This function must be run in a subshell to avoid polluting the environment.
 _csc-regen-db()
 {
     local base db dir patterns template tmpf
@@ -149,8 +149,6 @@ csc-regen-db()
         return 1
     fi
 
-    # Use a subshell to avoid polluting the environment when we source the
-    # template definition.
     ( _csc-regen-db $base $db )
     return $?
 }
