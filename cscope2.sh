@@ -46,7 +46,6 @@ csc-edit()
             echo "csc-edit: no matches" >&2
             return 1
         fi
-        echo $db
         sleep 1
         _csc-setdb $db
     fi
@@ -124,7 +123,6 @@ _csc-regen-db()
     # Clear existing file list entries for this db.
     sed -i '' -e "/ ${db}\$/d" $_CSCOPE_FILE_LIST
 
-    echo $db
     awk "{print \$1, \"${db}\"}" $tmpf >> $_CSCOPE_FILE_LIST
 
     rm -f $tmpf
@@ -153,7 +151,6 @@ csc-regen-db()
 
     # Use a subshell to avoid polluting the environment when we source the
     # template definition.
-    echo $base
     ( _csc-regen-db $base $db )
     return $?
 }
