@@ -21,8 +21,14 @@ csc-add-db()
         return 1
     fi
 
+    db=$(awk "{if (\$2 == \"${base}\") print \$1}" ${_CSCOPE_DB_LIST})
+    if [ -n "${db}" ]; then
+        echo "csc-add-db: database already exists" >&2
+        return 1
+    fi
+
     uuid=$(uuidgen)
-    echo "$uuid $base" >> ${_CSCOPE_DB_LIST}
+    echo "$uuid $base" >> $_CSCOPE_DB_LIST
 
     db=$uuid
     mkdir -p ${_CSCOPE_DB_DIR}/$db
@@ -37,7 +43,7 @@ csc-edit()
 
     if [ $# -eq 1 -a -f "$1" -a -z "$CSCOPE_DB" ]; then
         file=$(readlink -f "$1")
-        db=$(awk "{if (\$1 == \"${file}\") print \$2}" $_CSCOPE_FILE_LIST)
+        db=$(awk "{if (\$1 == \"${file}\") print \$2}" ${_CSCOPE_FILE_LIST})
         nmatch=$(echo "$db" | wc -l)
         if [ $nmatch -gt 1 ]; then
             echo "csc-edit: multiple matches: $db" >&2
