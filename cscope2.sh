@@ -69,6 +69,12 @@ csc-init()
     echo "SRCDIRS=." > ${_CSCOPE_TEMPLATE_DIR}/default/dirs
     mkdir ${_CSCOPE_TEMPLATE_DIR}/freebsd-kernel
     echo "SRCDIRS=sys" > ${_CSCOPE_TEMPLATE_DIR}/freebsd-kernel/dirs
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/onefs-kernel
+    echo "SRCDIRS=sys" > ${_CSCOPE_TEMPLATE_DIR}/onefs-kernel/dirs
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/illumos-kernel
+    echo "SRCDIRS=usr/src/uts" > ${_CSCOPE_TEMPLATE_DIR}/illumos-kernel/dirs
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/linux-kernel
+    echo "SRCDIRS=." > ${_CSCOPE_TEMPLATE_DIR}/linux-kernel/dirs
 }
 
 _csc-setdb()
