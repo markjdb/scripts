@@ -52,7 +52,6 @@ csc-edit()
             echo "csc-edit: no matches" >&2
             return 1
         fi
-        sleep 1
         _csc-setdb $db
     fi
 
