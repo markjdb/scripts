@@ -1,7 +1,18 @@
+# XXX we need locking
+
 _CSCOPE_DB_DIR=${HOME}/src/cscope2
 _CSCOPE_DB_LIST=${_CSCOPE_DB_DIR}/dbs
 _CSCOPE_FILE_LIST=${_CSCOPE_DB_DIR}/files
 _CSCOPE_TEMPLATE_DIR=${_CSCOPE_DB_DIR}/templates
+
+# Look up a cscope database UUID, given its base directory.
+_csc-find-db()
+{
+    local base
+
+    base=$(readlink -f $1)
+    awk "{if (\$2 == \"${base}\") print \$1}" ${_CSCOPE_DB_LIST}
+}
 
 # Add a source directory to the cscope DB set.
 csc-add-db()
@@ -21,7 +32,7 @@ csc-add-db()
         return 1
     fi
 
-    db=$(awk "{if (\$2 == \"${base}\") print \$1}" ${_CSCOPE_DB_LIST})
+    db=$(_csc-find-db ${base})
     if [ -n "${db}" ]; then
         echo "csc-add-db: database already exists" >&2
         return 1
@@ -34,6 +45,27 @@ csc-add-db()
     mkdir -p ${_CSCOPE_DB_DIR}/$db
     echo $template > ${_CSCOPE_DB_DIR}/${db}/template
     ( _csc-regen-db $base $db )
+}
+
+csc-rm-db()
+{
+    if [ $# -ne 1 ]; then
+        echo "usage: csc-rm-db <base dir>" >&2
+        return 1
+    fi
+
+    local base db
+
+    base=$1
+    db=$(_csc-find-db ${base})
+    if [ -z "${db}" ]; then
+        echo "csc-rm-db: no such db" >&2
+        return 1
+    fi
+
+    rm -rf ${_CSCOPE_DB_DIR}/${db}
+    sed -i '' "/${db}\$/d" ${_CSCOPE_FILE_LIST}
+    sed -i '' "/^${db}/d" ${_CSCOPE_DB_LIST}
 }
 
 # Edit a file, transparently selecting the correct cscope DB.
@@ -155,7 +187,7 @@ csc-regen-db()
         base=$(readlink -f $1)
     fi
 
-    db=$(awk "{if (\$2 == \"${base}\") print \$1}" ${_CSCOPE_DB_LIST})
+    db=$(_csc-find-db ${base})
     if [ -z "$db" ]; then
         echo "csc-regen-db: no such db" >&2
         return 1
