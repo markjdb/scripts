@@ -1,0 +1,13 @@
+#!/usr/sbin/dtrace
+
+#pragma D option quiet
+
+fbt::swap_pager_getpages:entry
+{
+	@[execname, pid] = count();
+}
+
+tick-1s
+{
+	printa(@);
+}
