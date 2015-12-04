@@ -1,0 +1,43 @@
+#!/bin/sh
+
+#
+# todo:
+#   - implement opts
+#   - support for incremental rebuilds of images
+#
+
+usage()
+{
+    echo "$(basename $0): [-a <arch>] [-s <size>]" >&2
+    exit 1
+}
+
+#
+# Execution begins here.
+#
+
+set -e
+
+IMAGE=$1
+OBJDIR=/usr/obj/$(readlink -f $(pwd))
+DESTDIR=$(mktemp -d)
+PARTFILE=$(mktemp)
+
+make -DNO_ROOT DESTDIR=$DESTDIR installworld installkernel distribution
+
+FSTAB=${DESTDIR}/etc/fstab
+cat > $FSTAB <<__EOF__
+/dev/gpt/rootfs / ufs rw 1 1
+/dev/gpt/swapfs none swap sw 0 0
+__EOF__
+
+FSTABSIZE=$(stat -f '%z' ${FSTAB})
+echo "./etc/fstab type=file uname=root gname=wheel mode=0644 size=${FSTABSIZE}" >> ${DESTDIR}/METALOG
+
+makefs -B little -o label=VM -M 15g -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
+
+mkimg -s gpt -f raw -b ${OBJDIR}/sys/boot/i386/pmbr \
+    -p freebsd-boot/bootfs:=${OBJDIR}/sys/boot/i386/gptboot/gptboot \
+    -p freebsd-swap/swapfs::2G \
+    -p freebsd-ufs/rootfs:=${PARTFILE} \
+    -o /tmp/vm.raw
