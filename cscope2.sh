@@ -71,6 +71,7 @@ csc-init()
     mkdir -p ${_CSCOPE_DB_DIR}
     mkdir ${_CSCOPE_TEMPLATE_DIR}
     mkdir ${_CSCOPE_TEMPLATE_DIR}/default
+    touch ${_CSCOPE_DB_LIST}
     echo "SRCDIRS=." > ${_CSCOPE_TEMPLATE_DIR}/default/dirs
     mkdir ${_CSCOPE_TEMPLATE_DIR}/freebsd-kernel
     echo "SRCDIRS=sys" > ${_CSCOPE_TEMPLATE_DIR}/freebsd-kernel/dirs
