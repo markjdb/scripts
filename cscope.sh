@@ -97,6 +97,30 @@ edit()
     csc-edit $@
 }
 
+csc-editf()
+{
+    local files
+
+    if [ $# -ne 1 ]; then
+        echo "usage: csc-editf <file>" >&2
+        return 1
+    fi
+
+    files=$(find . -name "$1")
+    if [ $(echo "$files" | wc -l) -ne 1 ]; then
+        echo "editf: found multiple matches:" >&2
+        echo "$files" >&2
+        return 1
+    fi
+
+    csc-edit "$files"
+}
+
+editf()
+{
+    csc-editf $@
+}
+
 # One-time init function.
 csc-init()
 {
