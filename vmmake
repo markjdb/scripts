@@ -4,12 +4,11 @@
 # todo:
 #   - implement opts
 #   - support for incremental rebuilds of images
-#   - install to a memory disk for great perf
 #
 
 usage()
 {
-    echo "$(basename $0): [-a <arch>] [-p <pkgs>] [-s <size>]" >&2
+    echo "usage: $(basename $0) [-t] [-a <arch>] [-p <pkgs>] [-s <size>]" >&2
     exit 1
 }
 
@@ -65,7 +64,8 @@ set -e
 ARCH=$(uname -m)
 PARTSIZE=10g
 PACKAGES=
-while getopts a:p: o; do
+TMPFS=
+while getopts a:p:s:t o; do
     case "$o" in
     a)
         ARCH=$OPTARG
@@ -76,11 +76,17 @@ while getopts a:p: o; do
     s)
         PARTSIZE=$OPTARG
         ;;
+    t)
+        TMPFS=1
+        ;;
     esac
 done
 
 if [ -n "$PACKAGES" -a $(id -u) -ne 0 ]; then
     echo "$(basename $0): must be root to install packages" >&2
+    exit 1
+elif [ $TMPFS -a $(id -u) -ne 0 ]; then
+    echo "$(basename $0): must be root to use tmpfs" >&2
     exit 1
 fi
 
@@ -89,7 +95,11 @@ OBJDIR=/usr/obj/$(readlink -f $(pwd))
 DESTDIR=$(mktemp -d)
 PARTFILE=$(mktemp)
 
-make -DNO_ROOT DESTDIR=$DESTDIR installworld installkernel distribution
+if [ $TMPFS ]; then
+    mount -t tmpfs tmpfs $DESTDIR
+fi
+
+make -s -DNO_ROOT DESTDIR=$DESTDIR installworld installkernel distribution
 
 FSTAB=etc/fstab
 cat > ${DESTDIR}/$FSTAB <<__EOF__
@@ -114,10 +124,14 @@ if [ -n "$PACKAGES" ]; then
     bootstrap $PARTFILE $PACKAGES
 fi
 
+if [ $TMPFS ]; then
+    umount $DESTDIR
+else
+    rm -rf $DESTDIR
+fi
+
 mkimg -s gpt -f raw -b ${OBJDIR}/sys/boot/i386/pmbr \
     -p freebsd-boot/bootfs:=${OBJDIR}/sys/boot/i386/gptboot/gptboot \
     -p freebsd-swap/swapfs::2G \
     -p freebsd-ufs/rootfs:=${PARTFILE} \
     -o /tmp/vm.raw
-
-rm -rf ${DESTDIR}
