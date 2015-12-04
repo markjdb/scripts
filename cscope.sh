@@ -92,6 +92,11 @@ csc-edit()
     unset CSCOPE_DB
 }
 
+edit()
+{
+    csc-edit $@
+}
+
 # One-time init function.
 csc-init()
 {
