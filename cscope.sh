@@ -1,183 +1,90 @@
-adddb()
+# XXX we need locking
+
+_CSCOPE_DB_DIR=${HOME}/src/cscope2
+_CSCOPE_DB_LIST=${_CSCOPE_DB_DIR}/dbs
+_CSCOPE_FILE_LIST=${_CSCOPE_DB_DIR}/files
+_CSCOPE_TEMPLATE_DIR=${_CSCOPE_DB_DIR}/templates
+
+# Look up a cscope database UUID, given its base directory.
+_csc-find-db()
 {
-    [ $# -ne 2 ] && echo "Usage: adddb <db name> <path>" >&2 && return 1
+    local base
 
-    local DB_DIR DB
-
-    DB_DIR=${HOME}/src/cscope
-    DB=$1
-
-    [ -d ${DB_DIR}/${DB} ] && echo "adddb: db '${DB}' already exists" >&2 && return 1
-    mkdir -p ${DB_DIR}/${DB}
-
-    echo "SRCDIRS=\"$(readlink -f $2)\"" > ${DB_DIR}/${DB}/dirs
-
-    regendb ${DB}
+    base=$(readlink -f $1)
+    awk "{if (\$2 == \"${base}\") print \$1}" ${_CSCOPE_DB_LIST}
 }
 
-listdb()
+# Add a source directory to the cscope DB set.
+csc-add-db()
 {
-    [ $# -ne 0 ] && echo "Usage: listdb" 1>&2 && return 1
-    find ${HOME}/src/cscope -mindepth 2 -maxdepth 2 -name db | xargs dirname
-}
-
-setdb()
-{
-    [ $# -ne 1 ] && echo "Usage: setdb < db-name >" 1>&2 && return 1
-
-    local DB_DIR DB
-
-    DB_DIR=${HOME}/src/cscope
-
-    for DB in $(ls ${DB_DIR}); do
-        if [ "$DB" = "$1" ]; then
-            export CSCOPE_DB=${DB_DIR}/${1}
-            return 0
-        fi
-    done
-
-    echo "setdb: unknown src tree" 1>&2
-    return 1
-}
-
-_regendb()
-{
-    local _DB
-
-    if [ -z "${flavour}" ]; then
-        _DB=${DB}
-    else
-        _DB=${DB}-${flavour}
-    fi
-
-    mkdir -p ${DB_DIR}/${_DB}
-    cd ${DB_DIR}/${_DB}
-
-    echo "regendb: regenerating ${_DB}" >&2
-
-    truncate -s 0 cscope.files
-    tmpf=$(mktemp -t cscope.sh.XXXXXX)
-
-    findargs='( -name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp )'
-    for dir in ${SRCDIRS}; do
-        find $(readlink -f ${flavourdir}/${dir}) $findargs -exec readlink -f {} \; >> $tmpf
-    done
-    for dir in ${DEPDIRS}; do
-        find $(readlink -f ${flavourdir}/${dir}) $findargs -exec readlink -f {} \; >> cscope.files
-    done
-    cat $tmpf >> cscope.files
-
-    if [ ! -f ${DB_DIR}/filelist ]; then
-        touch ${DB_DIR}/filelist
-    fi
-
-    case $(uname) in
-    Linux)
-        sed -i -e '/ '${_DB}'$/d' ${DB_DIR}/filelist
-        ;;
-    FreeBSD)
-        sed -i '' -e '/ '${_DB}'$/d' ${DB_DIR}/filelist
-        ;;
-    *)
-        echo "regendb: unhandled OS" >&2
+    if [ $# -ne 2 ]; then
+        echo "usage: csc-add-db <template> <base dir>" >&2
         return 1
-        ;;
-    esac
-
-    cat $tmpf | sed 's/$/ '${_DB}'/' >> ${DB_DIR}/filelist
-    rm -f $tmpf
-
-    [ -n "${flavour}" ] && echo "${DB}" > db
-
-    cscope -b -q -k &
-}
-
-regendb()
-{
-    local DB_DIR DB _DB dirs findargs flavour flavourdir flavours ret tmpf
-
-    pushd . >/dev/null
-
-    ret=0
-
-    DB_DIR=${HOME}/src/cscope
-    if [ $# -eq 0 ]; then
-        dirs="find $DB_DIR -name dirs -type f -depth 2 -exec dirname {} \;"
-    else
-        dirs="echo $@"
     fi
 
-    for DB in $(eval $dirs); do
-        if [ ! -d "${DB_DIR}/${DB}" ]; then
-            echo "regendb: unknown src tree '$DB'" >&2
-            ret=1
-            break
-        fi
+    local base db template uuid
 
-        cd ${DB_DIR}/${DB}
+    template=$1
+    base=$(readlink -f "$2")
 
-        if [ -f db -a -r db ]; then
-            _DB=$(cat db)
-            flavours=${DB#${_DB}-}
-            DB=$_DB
+    if [ ! -d ${_CSCOPE_TEMPLATE_DIR}/$template ]; then
+        echo "csc-add-db: non-existent template $template" >&2
+        return 1
+    fi
 
-            cd ${DB_DIR}/${_DB}
-        elif [ -f flavours -a -r flavours ]; then
-            flavours=$(cat flavours)
-        else
-            flavours=
-        fi
+    db=$(_csc-find-db ${base})
+    if [ -n "${db}" ]; then
+        echo "csc-add-db: database already exists" >&2
+        return 1
+    fi
 
-        . dirs
+    uuid=$(uuidgen)
+    echo "$uuid $base" >> $_CSCOPE_DB_LIST
 
-        if [ -z "${flavours}" ]; then
-            flavourdir=
-            _regendb
-            if [ $? -ne 0 ]; then
-                ret=1
-            fi
-        else
-            for flavour in ${flavours}; do
-                flavourdir=$(eval echo $(grep "^${flavour}[[:space:]]" ${DB_DIR}/trees | awk '{print $2}'))
-                if [ -z "$flavourdir" ]; then
-                    echo "regendb: unknown flavour '${flavour}'" >&2
-                    continue
-                fi
-
-                _regendb
-                if [ $? -ne 0 ]; then
-                    ret=1
-                fi
-            done
-        fi
-
-        [ $ret -eq 0 ] || break
-    done
-
-    unset SRCDIRS DEPDIRS
-
-    wait
-    popd >/dev/null
-    return $ret
+    db=$uuid
+    mkdir -p ${_CSCOPE_DB_DIR}/$db
+    echo $template > ${_CSCOPE_DB_DIR}/${db}/template
+    ( _csc-regen-db $base $db )
 }
 
-unsetdb()
+csc-rm-db()
 {
-    [ $# -ne 0 ] && echo "Usage: unsetdb" 1>&2 && return 1
+    if [ $# -ne 1 ]; then
+        echo "usage: csc-rm-db <base dir>" >&2
+        return 1
+    fi
 
-    unset CSCOPE_DB
+    local base db
+
+    base=$1
+    db=$(_csc-find-db ${base})
+    if [ -z "${db}" ]; then
+        echo "csc-rm-db: no such db" >&2
+        return 1
+    fi
+
+    rm -rf ${_CSCOPE_DB_DIR}/${db}
+    sed -i '' "/${db}\$/d" ${_CSCOPE_FILE_LIST}
+    sed -i '' "/^${db}/d" ${_CSCOPE_DB_LIST}
 }
 
-edit()
+# Edit a file, transparently selecting the correct cscope DB.
+csc-edit()
 {
-    local DB_DIR DB
+    local db file nmatch
 
     if [ $# -eq 1 -a -f "$1" -a -z "$CSCOPE_DB" ]; then
-        DB_DIR=${HOME}/src/cscope
-        DB=$(fgrep "$(readlink -f $1)" ${DB_DIR}/filelist | awk '{print $NF}')
-        if [ -n "$DB" -a $(echo "$DB" | wc -l) -eq 1 ]; then
-            setdb $DB
+        file=$(readlink -f "$1")
+        db=$(awk "{if (\$1 == \"${file}\") print \$2}" ${_CSCOPE_FILE_LIST})
+        nmatch=$(echo "$db" | wc -l)
+        if [ $nmatch -gt 1 ]; then
+            echo "csc-edit: multiple matches: $db" >&2
+            return 1
+        elif [ $nmatch -eq 0 ]; then
+            echo "csc-edit: no matches" >&2
+            return 1
         fi
+        _csc-setdb $db
     fi
 
     $EDITOR $@
@@ -185,43 +92,107 @@ edit()
     unset CSCOPE_DB
 }
 
-editf()
+# One-time init function.
+csc-init()
 {
-    local files
-
-    [ $# -ne 1 ] && echo "Usage: editf <file>" >&2 && return 1
-
-    files=$(find . -name "$1")
-    if [ $(echo "$files" | wc -l) -ne 1 ]; then
-        echo "editf: found multiple matches:"
-        echo "$files"
+    if [ $# -ne 0 ]; then
+        echo "usage: csc-init" >&2
         return 1
     fi
 
-    edit "$files"
+    mkdir -p ${_CSCOPE_DB_DIR}
+    mkdir ${_CSCOPE_TEMPLATE_DIR}
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/default
+    touch ${_CSCOPE_DB_LIST}
+    echo "SRCDIRS=." > ${_CSCOPE_TEMPLATE_DIR}/default/dirs
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/freebsd-kernel
+    echo "SRCDIRS=sys" > ${_CSCOPE_TEMPLATE_DIR}/freebsd-kernel/dirs
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/onefs-kernel
+    echo "SRCDIRS=sys" > ${_CSCOPE_TEMPLATE_DIR}/onefs-kernel/dirs
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/illumos-kernel
+    echo "SRCDIRS=usr/src/uts" > ${_CSCOPE_TEMPLATE_DIR}/illumos-kernel/dirs
+    mkdir ${_CSCOPE_TEMPLATE_DIR}/linux-kernel
+    echo "SRCDIRS=." > ${_CSCOPE_TEMPLATE_DIR}/linux-kernel/dirs
 }
 
-editg()
+_csc-setdb()
 {
-    local _editor
+    local db
 
-    _editor=$EDITOR
-    EDITOR=gvim
-    edit $@
-    EDITOR=$_editor
+    db=$1
+    export CSCOPE_DB=${_CSCOPE_DB_DIR}/$db
 }
 
-editw()
+# Private function to generate a DB given its name and the base dir. The public
+# version of this function takes only the base dir as its argument.
+#
+# This function must be run in a subshell to avoid polluting the environment.
+_csc-regen-db()
 {
-    local file
+    local base db dir patterns template tmpf
 
-    [ $# -ne 1 ] && echo "Usage: editw <file>" >&2 && return 1
+    set -e
 
-    file=$(which "$1")
+    base=$1
+    db=$2
+
+    cd ${_CSCOPE_DB_DIR}/$db
     if [ $? -ne 0 ]; then
-        echo "editw: file '$1' not found in \$PATH"
+        echo "_csc-regen-db: no such db $db" >&2
         return 1
     fi
 
-    edit "$file"
+    template=$(cat template)
+    if [ ! -d ${_CSCOPE_TEMPLATE_DIR}/$template ]; then
+        echo "_csc-regen-db: non-existent template $template" >&2
+        return 1
+    fi
+
+    . ${_CSCOPE_TEMPLATE_DIR}/${template}/dirs
+
+    patterns='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp'
+    tmpf=$(mktemp)
+
+    truncate -s 0 cscope.files
+    for dir in ${SRCDIRS}; do
+        find $(readlink -f ${base}/${dir}) \( $patterns \) -print >> $tmpf
+    done
+    for dir in ${DEPDIRS}; do
+        find $(readlink -f ${base}/${dir}) \( $patterns \) -print >> cscope.files
+    done
+    cat $tmpf >> cscope.files
+
+    touch $_CSCOPE_FILE_LIST
+
+    # Clear existing file list entries for this db.
+    sed -i '' -e "/ ${db}\$/d" $_CSCOPE_FILE_LIST
+
+    awk "{print \$1, \"${db}\"}" $tmpf >> $_CSCOPE_FILE_LIST
+
+    rm -f $tmpf
+
+    cscope -b -q -k
+}
+
+csc-regen-db()
+{
+    local base db
+
+    if [ $# -eq 0 ]; then
+        base=$(readlink -f .)
+    elif [ $# -ne 1 ]; then
+        echo "usage: csc-regen-db <base dir>" >&2
+        return 1
+    else
+        base=$(readlink -f $1)
+    fi
+
+    db=$(_csc-find-db ${base})
+    if [ -z "$db" ]; then
+        echo "csc-regen-db: no such db" >&2
+        return 1
+    fi
+
+    ( _csc-regen-db $base $db )
+    return $?
 }
