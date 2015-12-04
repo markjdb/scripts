@@ -4,6 +4,7 @@
 # todo:
 #   - implement opts
 #   - support for incremental rebuilds of images
+#   - install to a memory disk for great perf
 #
 
 usage()
@@ -37,6 +38,7 @@ bootstrap()
     done
     IFS=$oldifs
 
+    # Clean up, clean up.
     umount $mdir
     rmdir $mdir
     mdconfig -d -u ${md#md}
@@ -61,6 +63,7 @@ logfile()
 set -e
 
 ARCH=$(uname -m)
+PARTSIZE=10g
 PACKAGES=
 while getopts a:p: o; do
     case "$o" in
@@ -69,6 +72,9 @@ while getopts a:p: o; do
         ;;
     p)
         PACKAGES=$OPTARG
+        ;;
+    s)
+        PARTSIZE=$OPTARG
         ;;
     esac
 done
@@ -102,7 +108,7 @@ __EOF__
 logfile $FSTAB $DESTDIR
 logfile $RCCONF $DESTDIR
 
-makefs -B little -o label=VM -M 15g -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
+makefs -B little -o label=VM -M $PARTSIZE -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
 
 if [ -n "$PACKAGES" ]; then
     bootstrap $PARTFILE $PACKAGES
