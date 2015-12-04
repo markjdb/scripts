@@ -31,8 +31,18 @@ cat > $FSTAB <<__EOF__
 /dev/gpt/swapfs none swap sw 0 0
 __EOF__
 
+RCCONF=${DESTDIR}/etc/rc.conf
+cat > $RCCONF <<__EOF__
+ifconfig_vtnet0="DHCP"
+
+sendmail_enable="NONE"
+sshd_enable="YES"
+__EOF__
+
 FSTABSIZE=$(stat -f '%z' ${FSTAB})
 echo "./etc/fstab type=file uname=root gname=wheel mode=0644 size=${FSTABSIZE}" >> ${DESTDIR}/METALOG
+RCCONFSIZE=$(stat -f '%z' ${RCCONF})
+echo "./etc/rc.conf type=file uname=root gname=wheel mode=0644 size=${RCCONFSIZE}" >> ${DESTDIR}/METALOG
 
 makefs -B little -o label=VM -M 15g -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
 
