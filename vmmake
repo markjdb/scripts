@@ -8,8 +8,50 @@
 
 usage()
 {
-    echo "$(basename $0): [-a <arch>] [-s <size>]" >&2
+    echo "$(basename $0): [-a <arch>] [-p <pkgs>] [-s <size>]" >&2
     exit 1
+}
+
+# Bootstrap packages.
+bootstrap()
+{
+    local md mdir oldifs pfile pkgs
+
+    pfile=$1
+    pkgs=$2
+
+    md=$(mdconfig -f $pfile)
+    mdir=$(mktemp -d)
+
+    mount /dev/$md $mdir
+
+    # Set up to install packages.
+    cp -f /etc/resolv.conf ${mdir}/etc/resolv.conf
+    chroot ${mdir} env ASSUME_ALWAYS_YES=yes /usr/sbin/pkg bootstrap -y
+
+    # Do the thing.
+    oldifs=$IFS
+    ifs=, # XXX is this a valid separator?
+    for pkg in ${pkgs}; do
+        chroot ${mdir} env ASSUME_ALWAYS_YES=yes /usr/local/sbin/pkg install $pkg
+    done
+    IFS=$oldifs
+
+    umount $mdir
+    rmdir $mdir
+    mdconfig -d -u ${md#md}
+}
+
+# Manually add a file to the image.
+logfile()
+{
+    local file root size
+
+    file=$1
+    root=$2
+
+    size=$(stat -f '%z' ${root}/${file})
+    echo "./$file type=file uname=root gname=wheel mode=0644 size=$size" >> ${root}/METALOG
 }
 
 #
@@ -18,6 +60,24 @@ usage()
 
 set -e
 
+ARCH=$(uname -m)
+PACKAGES=
+while getopts a:p: o; do
+    case "$o" in
+    a)
+        ARCH=$OPTARG
+        ;;
+    p)
+        PACKAGES=$OPTARG
+        ;;
+    esac
+done
+
+if [ -n "$PACKAGES" -a $(id -u) -ne 0 ]; then
+    echo "$(basename $0): must be root to install packages" >&2
+    exit 1
+fi
+
 IMAGE=$1
 OBJDIR=/usr/obj/$(readlink -f $(pwd))
 DESTDIR=$(mktemp -d)
@@ -25,29 +85,33 @@ PARTFILE=$(mktemp)
 
 make -DNO_ROOT DESTDIR=$DESTDIR installworld installkernel distribution
 
-FSTAB=${DESTDIR}/etc/fstab
-cat > $FSTAB <<__EOF__
+FSTAB=etc/fstab
+cat > ${DESTDIR}/$FSTAB <<__EOF__
 /dev/gpt/rootfs / ufs rw 1 1
 /dev/gpt/swapfs none swap sw 0 0
 __EOF__
 
-RCCONF=${DESTDIR}/etc/rc.conf
-cat > $RCCONF <<__EOF__
+RCCONF=etc/rc.conf
+cat > ${DESTDIR}/$RCCONF <<__EOF__
 ifconfig_vtnet0="DHCP"
 
 sendmail_enable="NONE"
 sshd_enable="YES"
 __EOF__
 
-FSTABSIZE=$(stat -f '%z' ${FSTAB})
-echo "./etc/fstab type=file uname=root gname=wheel mode=0644 size=${FSTABSIZE}" >> ${DESTDIR}/METALOG
-RCCONFSIZE=$(stat -f '%z' ${RCCONF})
-echo "./etc/rc.conf type=file uname=root gname=wheel mode=0644 size=${RCCONFSIZE}" >> ${DESTDIR}/METALOG
+logfile $FSTAB $DESTDIR
+logfile $RCCONF $DESTDIR
 
 makefs -B little -o label=VM -M 15g -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
+
+if [ -n "$PACKAGES" ]; then
+    bootstrap $PARTFILE $PACKAGES
+fi
 
 mkimg -s gpt -f raw -b ${OBJDIR}/sys/boot/i386/pmbr \
     -p freebsd-boot/bootfs:=${OBJDIR}/sys/boot/i386/gptboot/gptboot \
     -p freebsd-swap/swapfs::2G \
     -p freebsd-ufs/rootfs:=${PARTFILE} \
     -o /tmp/vm.raw
+
+rm -rf ${DESTDIR}
