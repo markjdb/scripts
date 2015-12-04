@@ -9,5 +9,7 @@ fbt::swap_pager_getpages:entry
 
 tick-1s
 {
-	printa("%Y: %s(%d): %@d\n\n", walltimestamp, @swappers);
+	printf("%Y:\n", walltimestamp);
+	printa("%s(%d): %@d\n", @swappers);
+	printf("\n");
 }
