@@ -5,13 +5,23 @@ _CSCOPE_DB_LIST=${_CSCOPE_DB_DIR}/dbs
 _CSCOPE_FILE_LIST=${_CSCOPE_DB_DIR}/files
 _CSCOPE_TEMPLATE_DIR=${_CSCOPE_DB_DIR}/templates
 
-# Look up a cscope database UUID, given its base directory.
-_csc-find-db()
+# Look up cscope database UUIDs, given a base directory.
+_csc-find-dbs()
 {
     local base
 
     base=$(readlink -f $1)
-    awk "{if (\$2 == \"${base}\") print \$1}" ${_CSCOPE_DB_LIST}
+    awk "{if (\$2 == \"${base}\") print \$1}" $_CSCOPE_DB_LIST
+}
+
+_csc-rm-db()
+{
+    local db
+
+    db=$1
+    rm -rf ${_CSCOPE_DB_DIR}/$db
+    sed -i '' "/${db}\$/d" $_CSCOPE_FILE_LIST
+    sed -i '' "/^${db}/d" $_CSCOPE_DB_LIST
 }
 
 # Add a source directory to the cscope DB set.
@@ -22,7 +32,7 @@ csc-add-db()
         return 1
     fi
 
-    local base db template uuid
+    local base db dbs template uuid
 
     template=$1
     base=$(readlink -f "$2")
@@ -32,11 +42,14 @@ csc-add-db()
         return 1
     fi
 
-    db=$(_csc-find-db ${base})
-    if [ -n "${db}" ]; then
-        echo "csc-add-db: database already exists" >&2
-        return 1
-    fi
+    # Make sure we don't create DBs using the same base dir and template.
+    dbs=$(_csc-find-dbs ${base})
+    for db in ${dbs}; do
+        if [ "$(cat ${_CSCOPE_DB_DIR}/${db}/template)" = $template ]; then
+            echo "csc-add-db: database already exists" >&2
+            return 1
+        fi
+    done
 
     uuid=$(uuidgen)
     echo "$uuid $base" >> $_CSCOPE_DB_LIST
@@ -45,27 +58,31 @@ csc-add-db()
     mkdir -p ${_CSCOPE_DB_DIR}/$db
     echo $template > ${_CSCOPE_DB_DIR}/${db}/template
     ( _csc-regen-db $base $db )
+    if [ $? -ne 0 ]; then
+        # Clean up.
+        _csc-rm-db $db
+    fi
 }
 
-csc-rm-db()
+csc-rm-dbs()
 {
     if [ $# -ne 1 ]; then
-        echo "usage: csc-rm-db <base dir>" >&2
+        echo "usage: csc-rm-dbs <base dir>" >&2
         return 1
     fi
 
-    local base db
+    local base db dbs
 
     base=$1
-    db=$(_csc-find-db ${base})
+    dbs=$(_csc-find-dbs ${base})
     if [ -z "${db}" ]; then
-        echo "csc-rm-db: no such db" >&2
+        echo "csc-rm-dbs: no dbs for this dir" >&2
         return 1
     fi
 
-    rm -rf ${_CSCOPE_DB_DIR}/${db}
-    sed -i '' "/${db}\$/d" ${_CSCOPE_FILE_LIST}
-    sed -i '' "/^${db}/d" ${_CSCOPE_DB_LIST}
+    for db in ${dbs}; do
+        _csc-rm-db ${db}
+    done
 }
 
 # Edit a file, transparently selecting the correct cscope DB.
@@ -182,8 +199,11 @@ _csc-regen-db()
     patterns='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp'
     tmpf=$(mktemp)
 
+    echo "base is $base"
+
     truncate -s 0 cscope.files
     for dir in ${SRCDIRS}; do
+        echo "dir is $dir"
         find $(readlink -f ${base}/${dir}) \( $patterns \) -print >> $tmpf
     done
     for dir in ${DEPDIRS}; do
@@ -203,25 +223,30 @@ _csc-regen-db()
     cscope -b -q -k
 }
 
-csc-regen-db()
+csc-regen-dbs()
 {
-    local base db
+    local base db dbs ret
 
     if [ $# -eq 0 ]; then
         base=$(readlink -f .)
     elif [ $# -ne 1 ]; then
-        echo "usage: csc-regen-db <base dir>" >&2
+        echo "usage: csc-regen-dbs <base dir>" >&2
         return 1
     else
         base=$(readlink -f $1)
     fi
 
-    db=$(_csc-find-db ${base})
-    if [ -z "$db" ]; then
-        echo "csc-regen-db: no such db" >&2
+    dbs=$(_csc-find-dbs ${base})
+    if [ -z "$dbs" ]; then
+        echo "csc-regen-dbs: no such db" >&2
         return 1
     fi
 
-    ( _csc-regen-db $base $db )
-    return $?
+    for db in ${dbs}; do
+        ( _csc-regen-db $base $db )
+        ret=$?
+        if [ $ret -ne 0 ]; then
+            return $ret
+        fi
+    done
 }
