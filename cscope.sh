@@ -199,11 +199,8 @@ _csc-regen-db()
     patterns='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp'
     tmpf=$(mktemp)
 
-    echo "base is $base"
-
     truncate -s 0 cscope.files
     for dir in ${SRCDIRS}; do
-        echo "dir is $dir"
         find $(readlink -f ${base}/${dir}) \( $patterns \) -print >> $tmpf
     done
     for dir in ${DEPDIRS}; do
