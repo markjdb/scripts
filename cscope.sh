@@ -138,6 +138,21 @@ editf()
     csc-editf $@
 }
 
+csc-editw()
+{
+    if [ $# -ne 1 ]; then
+        echo "usage: csc-editw <file>" >&2
+        return 1
+    fi
+
+    csc-edit $(which "$1")
+}
+
+editw()
+{
+    csc-editw $@
+}
+
 # One-time init function.
 csc-init()
 {
