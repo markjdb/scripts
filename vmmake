@@ -31,7 +31,7 @@ bootstrap()
 
     # Do the thing.
     oldifs=$IFS
-    ifs=, # XXX is this a valid separator?
+    IFS=, # XXX is this a valid separator?
     for pkg in ${pkgs}; do
         chroot ${mdir} env ASSUME_ALWAYS_YES=yes /usr/local/sbin/pkg install $pkg
     done
@@ -102,7 +102,8 @@ if [ $TMPFS ]; then
     mount -t tmpfs tmpfs $DESTDIR
 fi
 
-make -s -DNO_ROOT DESTDIR=$DESTDIR installworld installkernel distribution
+make -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=BHYVE \
+    installworld installkernel distribution
 
 FSTAB=etc/fstab
 cat > ${DESTDIR}/$FSTAB <<__EOF__
