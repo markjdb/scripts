@@ -79,6 +79,9 @@ while getopts a:p:s:t o; do
     t)
         TMPFS=1
         ;;
+    ?)
+        usage
+        ;;
     esac
 done
 
