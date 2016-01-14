@@ -88,7 +88,7 @@ done
 if [ -n "$PACKAGES" -a $(id -u) -ne 0 ]; then
     echo "$(basename $0): must be root to install packages" >&2
     exit 1
-elif [ $TMPFS -a $(id -u) -ne 0 ]; then
+elif [ "$TMPFS" -a $(id -u) -ne 0 ]; then
     echo "$(basename $0): must be root to use tmpfs" >&2
     exit 1
 fi
@@ -109,6 +109,7 @@ FSTAB=etc/fstab
 cat > ${DESTDIR}/$FSTAB <<__EOF__
 /dev/gpt/rootfs / ufs rw 1 1
 /dev/gpt/swapfs none swap sw 0 0
+169.254.0.1:$(pwd) /usr/src nfs ro 0 0
 __EOF__
 
 RCCONF=etc/rc.conf
@@ -119,10 +120,17 @@ sendmail_enable="NONE"
 sshd_enable="YES"
 __EOF__
 
+SRCCONF=etc/src.conf
+cat > ${DESTDIR}/$SRCCONF <<__EOF__
+KERNCONF?= BHYVE
+__EOF__
+
 logfile $FSTAB $DESTDIR
 logfile $RCCONF $DESTDIR
+logfile $SRCCONF $DESTDIR
 
-makefs -B little -o label=VM -M $PARTSIZE -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
+makefs -B little -f $(cat ${DESTDIR}/METALOG | wc -l) -o label=VM -M $PARTSIZE \
+    -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
 
 if [ -n "$PACKAGES" ]; then
     bootstrap $PARTFILE $PACKAGES
