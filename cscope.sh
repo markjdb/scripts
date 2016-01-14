@@ -75,13 +75,13 @@ csc-rm-dbs()
 
     base=$1
     dbs=$(_csc-find-dbs ${base})
-    if [ -z "${db}" ]; then
+    if [ -z "$dbs" ]; then
         echo "csc-rm-dbs: no dbs for this dir" >&2
         return 1
     fi
 
     for db in ${dbs}; do
-        _csc-rm-db ${db}
+        _csc-rm-db $db
     done
 }
 
