@@ -162,3 +162,5 @@ mkimg -s gpt -f raw -b ${OBJDIR}/sys/boot/i386/pmbr \
     -p freebsd-swap/swapfs::2G \
     -p freebsd-ufs/rootfs:=${PARTFILE} \
     -o /tmp/vm.raw
+
+rm -f $PARTFILE
