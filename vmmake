@@ -73,22 +73,22 @@ install_config()
 
     fstab=etc/fstab
     cat > ${destdir}/$fstab <<__EOF__
-    /dev/gpt/rootfs / ufs rw 1 1
-    /dev/gpt/swapfs none swap sw 0 0
-    169.254.0.1:$(pwd) /usr/src nfs ro 0 0
+/dev/gpt/rootfs / ufs rw 1 1
+/dev/gpt/swapfs none swap sw 0 0
+169.254.0.1:$(pwd) /usr/src nfs ro 0 0
 __EOF__
 
     rcconf=etc/rc.conf
     cat > ${destdir}/$rcconf <<__EOF__
-    ifconfig_vtnet0="DHCP"
+ifconfig_vtnet0="DHCP"
 
-    sendmail_enable="NONE"
-    sshd_enable="YES"
+sendmail_enable="NONE"
+sshd_enable="YES"
 __EOF__
 
     srcconf=etc/src.conf
     cat > ${destdir}/$srcconf <<__EOF__
-    KERNCONF?= BHYVE
+KERNCONF?= BHYVE
 __EOF__
 
     logfile $fstab $destdir
