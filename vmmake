@@ -2,7 +2,6 @@
 
 #
 # todo:
-#   - implement opts
 #   - support for incremental rebuilds of images
 #
 
@@ -50,6 +49,8 @@ cleanup()
     else
         rm -rf $DESTDIR
     fi
+
+    rm -f $PARTFILE
 }
 
 # Manually add a file to the image.
@@ -67,7 +68,7 @@ logfile()
 # Create custom system configuration files.
 install_config()
 {
-    local destdir fstab rcconf srcconf
+    local destdir fstab rcconf srcconf sshdconf
 
     destdir=$1
 
@@ -75,7 +76,7 @@ install_config()
     cat > ${destdir}/$fstab <<__EOF__
 /dev/gpt/rootfs / ufs rw 1 1
 /dev/gpt/swapfs none swap sw 0 0
-169.254.0.1:$(pwd) /usr/src nfs ro 0 0
+${IPADDR}:$(pwd) /usr/src nfs ro 0 0
 __EOF__
 
     rcconf=etc/rc.conf
@@ -94,6 +95,13 @@ __EOF__
     logfile $fstab $destdir
     logfile $rcconf $destdir
     logfile $srcconf $destdir
+
+    # Fixup sshd config so that root can log in.
+    sshdconf=etc/ssh/sshd_config
+    sed -i '' 's/^#PermitRootLogin.*$/PermitRootLogin yes/' ${destdir}/$sshdconf
+    sed -i '' 's/^#PermitEmptyPasswords.*$/PermitEmptyPasswords yes/' ${destdir}/$sshdconf
+    sed -i '' '/^\.\/etc\/ssh\/sshd_config/d' ${destdir}/METALOG
+    logfile $sshdconf $destdir
 }
 
 #
@@ -103,13 +111,17 @@ __EOF__
 set -e
 
 ARCH=$(uname -m)
+IPADDR=
 PARTSIZE=10g
 PACKAGES=
 TMPFS=
-while getopts a:p:s:t o; do
+while getopts a:i:p:s:t o; do
     case "$o" in
     a)
         ARCH=$OPTARG
+        ;;
+    i)
+        IPADDR=$OPTARG
         ;;
     p)
         PACKAGES=$OPTARG
@@ -132,6 +144,11 @@ if [ -n "$PACKAGES" -a $(id -u) -ne 0 ]; then
 elif [ "$TMPFS" -a $(id -u) -ne 0 ]; then
     echo "$(basename $0): must be root to use tmpfs" >&2
     exit 1
+fi
+
+if [ -z "$IPADDR" ]; then
+    ifconfig bridge0 >/dev/null || exit 1
+    IPADDR=$(ifconfig bridge0 | grep -E '^[[:space:]]*inet' | head -n 1 | awk '{print $2}')
 fi
 
 IMAGE=$1
