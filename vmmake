@@ -14,7 +14,7 @@ usage()
 # Bootstrap packages.
 bootstrap()
 {
-    local md mdir oldifs pfile pkgs
+    local md mdir pfile pkgs
 
     pfile=$1
     pkgs=$2
@@ -29,12 +29,8 @@ bootstrap()
     chroot ${mdir} env ASSUME_ALWAYS_YES=yes /usr/sbin/pkg bootstrap -y
 
     # Do the thing.
-    oldifs=$IFS
-    IFS=, # XXX is this a valid separator?
-    for pkg in ${pkgs}; do
-        chroot ${mdir} env ASSUME_ALWAYS_YES=yes /usr/local/sbin/pkg install $pkg
-    done
-    IFS=$oldifs
+    echo "$pkgs" | tr ',' ' ' | xargs chroot $mdir env ASSUME_ALWAYS_YES=yes \
+        /usr/local/sbin/pkg install
 
     # Clean up, clean up.
     umount $mdir
@@ -47,6 +43,8 @@ cleanup()
     if [ $TMPFS ]; then
         umount $DESTDIR
     else
+        rm -rf $DESTDIR || :
+        chflags -R 0 $DESTDIR || :
         rm -rf $DESTDIR
     fi
 
@@ -136,6 +134,7 @@ while getopts a:i:p:s:t o; do
         usage
         ;;
     esac
+    shift $((OPTIND-1))
 done
 
 if [ -n "$PACKAGES" -a $(id -u) -ne 0 ]; then
@@ -148,10 +147,11 @@ fi
 
 if [ -z "$IPADDR" ]; then
     ifconfig bridge0 >/dev/null || exit 1
-    IPADDR=$(ifconfig bridge0 | grep -E '^[[:space:]]*inet' | head -n 1 | awk '{print $2}')
+    IPADDR=$(ifconfig bridge0 | grep -E '^[[:space:]]*inet' | head -n 1 | \
+        awk '{print $2}')
 fi
 
-IMAGE=$1
+IMAGE=${1:-/tmp/vm.raw}
 OBJDIR=/usr/obj/$(readlink -f $(pwd))
 PARTFILE=$(mktemp)
 
@@ -162,8 +162,8 @@ fi
 
 trap "cleanup; exit 1" EXIT SIGINT SIGHUP SIGTERM
 
-make -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=BHYVE \
-    installworld installkernel distribution
+make -j $(sysctl -n hw.ncpu) -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=BHYVE \
+    DISTDIR= installworld installkernel distribution
 
 install_config $DESTDIR
 
@@ -174,10 +174,10 @@ if [ -n "$PACKAGES" ]; then
     bootstrap $PARTFILE $PACKAGES
 fi
 
-mkimg -s gpt -f raw -b ${OBJDIR}/sys/boot/i386/pmbr \
-    -p freebsd-boot/bootfs:=${OBJDIR}/sys/boot/i386/gptboot/gptboot \
+mkimg -s gpt -f raw -b ${DESTDIR}/boot/pmbr \
+    -p freebsd-boot/bootfs:=${DESTDIR}/boot/gptboot \
     -p freebsd-swap/swapfs::2G \
     -p freebsd-ufs/rootfs:=${PARTFILE} \
-    -o /tmp/vm.raw
+    -o $IMAGE
 
 rm -f $PARTFILE
