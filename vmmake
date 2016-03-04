@@ -76,6 +76,8 @@ install_config()
     cat > ${destdir}/$fstab <<__EOF__
 /dev/gpt/rootfs / ufs rw 1 1
 /dev/gpt/swapfs none swap sw 0 0
+none /proc procfs rw 0 0
+none /dev/fd fdescfs rw 0 0
 ${IPADDR}:$(pwd) /usr/src nfs ro 0 0
 __EOF__
 
