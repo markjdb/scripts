@@ -1,0 +1,16 @@
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+
+int lcount;
+
+lockstat:::$1-acquire
+{
+	lcount += 1;
+}
+
+profile:::tick-1sec
+{
+	printf("%Y: saw %d acquisitions\n", walltimestamp, lcount);
+	lcount = 0;
+}
