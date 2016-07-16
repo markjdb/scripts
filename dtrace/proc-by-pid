@@ -1,0 +1,24 @@
+#!/usr/sbin/dtrace -s
+
+BEGIN
+{
+	p = `allproc.lh_first;
+}
+
+tick-100Hz
+/p == 0/
+{
+	exit(1);
+}
+
+tick-100Hz
+/p->p_pid == $1/
+{
+	printf("0x%p", p);
+	exit(0);
+}
+
+tick-100Hz
+{
+	p = p->p_list.le_next;
+}
