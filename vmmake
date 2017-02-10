@@ -9,7 +9,7 @@
 
 usage()
 {
-    echo "usage: $(basename $0) [-t] [-a <arch>] [-p <pkgs>] [-s <size>]" >&2
+    echo "usage: $(basename $0) [-t] [-a <arch>] [-p <pkgs>] [-s <size>] <img>" >&2
     exit 1
 }
 
@@ -68,7 +68,7 @@ logfile()
 # Create custom system configuration files.
 install_config()
 {
-    local destdir fstab rcconf srcconf
+    local destdir fstab localtime rcconf srcconf
 
     destdir=$1
 
@@ -81,9 +81,14 @@ none /dev/fd fdescfs rw 0 0
 ${IPADDR}:$(pwd) /usr/src nfs ro 0 0
 __EOF__
 
+    localtime=etc/localtime
+    cp -f /$localtime ${destdir}/$localtime
+
     rcconf=etc/rc.conf
     cat > ${destdir}/$rcconf <<__EOF__
 ifconfig_vtnet0="DHCP"
+ipv6_activate_all_interfaces="YES"
+ipv6_cpe_wanif="vtnet0"
 
 sendmail_enable="NONE"
 sshd_enable="YES"
@@ -95,6 +100,7 @@ KERNCONF?= BHYVE
 __EOF__
 
     logfile $fstab $destdir
+    logfile $localtime $destdir
     logfile $rcconf $destdir
     logfile $srcconf $destdir
 }
@@ -159,7 +165,7 @@ fi
 
 trap "cleanup; exit 1" EXIT SIGINT SIGHUP SIGTERM
 
-make -j $(sysctl -n hw.ncpu) -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=BHYVE \
+make -j $(sysctl -n hw.ncpu) -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=BHYVE MACHINE=$ARCH TARGET_ARCH=$ARCH \
     DISTDIR= installworld installkernel distribution
 
 install_config $DESTDIR
