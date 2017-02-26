@@ -69,7 +69,7 @@ def foreach_thread_in_proc(p):
 
 def vm_page_foreach(obj):
     obj = maybe_eval(obj)
-    m = tailq_first(obj, "memq")
+    m = tailq_first(obj['memq'])
     while m != 0:
         yield m
         m = tailq_next(m, "listq")
