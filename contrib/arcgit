@@ -81,39 +81,41 @@ create_review()
 
 	arc list > $phab_before
 	yes | env EDITOR=true arc diff --create --allow-untracked HEAD~
+        if [ $? -ne 0 ]; then
+            error "Could not create Phabricator diff"
+        fi
 	arc list > $phab_after
 
 	headline="$(git show $commit -s --format=%s)"
 	phab_id=`comm -13 "$phab_before" "$phab_after" | fgrep "$headline" \
 	    | egrep -o 'D[0-9]+:' | tr -d ':'`
 
-	if [ -z "$phab_id" ]
-	then
+	if [ -z "$phab_id" ]; then
 		error "Could not get review ID"
 	fi
 
 	git branch review/${phab_id}_base HEAD~
 
 	git checkout -b review/$phab_id
-	cat - <<EOF | git commit --allow-empty -F -
+	cat - <<__EOF__ | git commit --allow-empty -F -
 squash! $headline
 
 Differential Revision:	https://reviews.freebsd.org/$phab_id
-Reviewed by:	
-EOF
+__EOF__
+
+	git push -u origin review/${phab_id}_base
+	git push -u origin review/${phab_id}
 }
 
 unset range test_plan reviewers cc_list
 
-while getopts "c:C:r:R:T:" o
-do
+while getopts "c:C:r:R:T:" o; do
 	case "$o" in
 	c)
 		range="${OPTARG}~..${OPTARG}"
 		;;
 	C)
-		if [ -z "$cc_list" ]
-		then
+		if [ -z "$cc_list" ]; then
 			cc_list="$OPTARG"
 		else
 			cc_list="$cc_list, $OPTARG"
@@ -123,8 +125,7 @@ do
 		range=$OPTARG
 		;;
 	R)
-		if [ -z "$reviewers" ]
-		then
+		if [ -z "$reviewers" ]; then
 			reviewers="$OPTARG"
 		else
 			reviewers="$reviewers, $OPTARG"
@@ -139,56 +140,46 @@ done
 shift $((OPTIND - 1))
 OPTIND=1
 
-if [ -n "$1" ]
-then
+if [ -n "$1" ]; then
         error "Unrecognized argument $1"
 fi
 
-if [ -z "$range" ]
-then
+if [ -z "$range" ]; then
 	error "-c or -r argument is mandatory"
 fi
 
-if [ -n "$test_plan" -a ! -r "$test_plan" ]
-then
+if [ -n "$test_plan" -a ! -r "$test_plan" ]; then
 	error "$test_plan is not readable"
 fi
 
-if ! type git > /dev/null 2> /dev/null
-then
+if ! type git > /dev/null 2> /dev/null; then
 	error "Install devel/git first"
 fi
 
-if ! type arc > /dev/null 2> /dev/null
-then
+if ! type arc > /dev/null 2> /dev/null; then
 	error "Install devel/arcanist first"
 fi
 
 git update-index -q --refresh
-if ! git diff-index --quiet --cached HEAD
-then
+if ! git diff-index --quiet --cached HEAD; then
 	error "index is unclean"
 fi
 
-if ! git diff-files --quiet
-then
+if ! git diff-files --quiet; then
 	error "Working directory is unclean"
 fi
 
-if git ls-files --other --error-unmatch . > /dev/null 2> /dev/null
-then
-	error "Working directory contains untracked files"
-fi
+#if git ls-files --other --error-unmatch . > /dev/null 2> /dev/null; then
+#	error "Working directory contains untracked files"
+#fi
 
 # We have to do a git checkout in order to run arc, so save the original branch
 # so that we can check it out again once we're done.
-if ! orig_branch=$(git symbolic-ref --short -q HEAD)
-then
+if ! orig_branch=$(git symbolic-ref --short -q HEAD); then
 	orig_branch=$(git show -s --pretty='%H' HEAD)
 fi
 
-git log --format=%H $range | tail -r | while read -r commit
-do
+git log --format=%H $range | tail -r | while read -r commit; do
 	create_review $commit < /dev/null
 done
 
@@ -201,4 +192,3 @@ code=$?
 git checkout $orig_branch
 
 exit $code
-
