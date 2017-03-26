@@ -99,10 +99,14 @@ __EOF__
 KERNCONF?= BHYVE
 __EOF__
 
+    wallcmosclock=etc/wall_cmos_clock
+    touch ${destdir}/$wallcmosclock
+
     logfile $fstab $destdir
     logfile $localtime $destdir
     logfile $rcconf $destdir
     logfile $srcconf $destdir
+    logfile $wallcmosclock $destdir
 }
 
 #
