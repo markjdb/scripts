@@ -9,7 +9,7 @@
 
 usage()
 {
-    echo "usage: $(basename $0) [-t] [-a <arch>] [-p <pkgs>] [-s <size>] <img>" >&2
+    echo "usage: $(basename $0) [-tkx] [-a <arch>] [-c <kernel config>] [-f <free files>] [-p <pkgs>] [-s <size>] <img>" >&2
     exit 1
 }
 
@@ -71,6 +71,7 @@ install_config()
     local destdir fstab localtime rcconf srcconf
 
     destdir=$1
+    kernconfig=$2
 
     fstab=etc/fstab
     cat > ${destdir}/$fstab <<__EOF__
@@ -96,7 +97,7 @@ __EOF__
 
     srcconf=etc/src.conf
     cat > ${destdir}/$srcconf <<__EOF__
-KERNCONF?= BHYVE
+KERNCONF?= $kernconfig
 __EOF__
 
     wallcmosclock=etc/wall_cmos_clock
@@ -120,13 +121,26 @@ IPADDR=
 PARTSIZE=10g
 PACKAGES=
 TMPFS=
-while getopts a:i:p:s:t o; do
+KERNCONFIG=
+NUMFILES=
+MKSRC=0
+NONET=0
+while getopts a:cf:i:kp:s:t:x o; do
     case "$o" in
     a)
         ARCH=$OPTARG
         ;;
+    c)
+        KERNCONFIG=$OPTARG
+        ;;
+    f)
+        NUMFILES=$OPTARG
+        ;;
     i)
         IPADDR=$OPTARG
+        ;;
+    k)
+        MKSRC=1
         ;;
     p)
         PACKAGES=$OPTARG
@@ -137,6 +151,9 @@ while getopts a:i:p:s:t o; do
     t)
         TMPFS=1
         ;;
+    x)
+        NONET=1
+	;;
     ?)
         usage
         ;;
@@ -152,10 +169,16 @@ elif [ "$TMPFS" -a $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-if [ -z "$IPADDR" ]; then
-    ifconfig bridge0 >/dev/null || exit 1
-    IPADDR=$(ifconfig bridge0 | grep -E '^[[:space:]]*inet' | head -n 1 | \
-        awk '{print $2}')
+if [ -z "$KERNCONFIG" ]; then
+    KERNCONFIG=BHYVE
+fi
+
+if [ -z "$NONET" ]; then
+    if [ -z "$IPADDR" ]; then
+        ifconfig bridge0 >/dev/null || exit 1
+        IPADDR=$(ifconfig bridge0 | grep -E '^[[:space:]]*inet' | head -n 1 | \
+            awk '{print $2}')
+    fi
 fi
 
 IMAGE=${1:-/tmp/vm.raw}
@@ -169,12 +192,21 @@ fi
 
 trap "cleanup; exit 1" EXIT SIGINT SIGHUP SIGTERM
 
-make -j $(sysctl -n hw.ncpu) -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=BHYVE MACHINE=$ARCH TARGET_ARCH=$ARCH \
+make -j $(sysctl -n hw.ncpu) -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=$KERNCONFIG MACHINE=$ARCH TARGET_ARCH=$ARCH \
     DISTDIR= installworld installkernel distribution
 
-install_config $DESTDIR
+install_config $DESTDIR $KERNCONFIG
 
-makefs -B little -f $(cat ${DESTDIR}/METALOG | wc -l) -o label=VM -M $PARTSIZE \
+if [ -z "$NUMFILES" ]; then
+    NUMFILES=$(cat ${DESTDIR}/METALOG | wc -l)
+fi
+
+if [ $MKSRC ]; then
+    echo "Installing source..."
+    cp -vR * $DESTDIR/usr/src
+fi
+
+makefs -B little -f $NUMFILES -o label=VM -M $PARTSIZE \
     -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
 
 if [ -n "$PACKAGES" ]; then
