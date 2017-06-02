@@ -9,7 +9,7 @@
 
 usage()
 {
-    echo "usage: $(basename $0) [-tkx] [-a <arch>] [-p <pkgs>] [-s <size>] [-c <config>] [-f <free files>] <img>" >&2
+    echo "usage: $(basename $0) [-tkx] [-a <arch>] [-c <kernel config>] [-f <free files>] [-p <pkgs>] [-s <size>] <img>" >&2
     exit 1
 }
 
@@ -125,13 +125,22 @@ KERNCONFIG=
 NUMFILES=
 MKSRC=0
 NONET=0
-while getopts a:i:p:s:tc:f:kx o; do
+while getopts a:cf:i:kp:s:t:x o; do
     case "$o" in
     a)
         ARCH=$OPTARG
         ;;
+    c)
+        KERNCONFIG=$OPTARG
+        ;;
+    f)
+        NUMFILES=$OPTARG
+        ;;
     i)
         IPADDR=$OPTARG
+        ;;
+    k)
+        MKSRC=1
         ;;
     p)
         PACKAGES=$OPTARG
@@ -141,15 +150,6 @@ while getopts a:i:p:s:tc:f:kx o; do
         ;;
     t)
         TMPFS=1
-        ;;
-    c)
-        KERNCONFIG=$OPTARG
-        ;;
-    f)
-        NUMFILES=$OPTARG
-        ;;
-    k)
-        MKSRC=1
         ;;
     x)
         NONET=1
