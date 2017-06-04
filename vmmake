@@ -125,7 +125,7 @@ KERNCONFIG=
 NUMFILES=
 MKSRC=0
 NONET=0
-while getopts a:cf:i:kp:s:t:x o; do
+while getopts a:c:f:i:kp:s:t:x o; do
     case "$o" in
     a)
         ARCH=$OPTARG
