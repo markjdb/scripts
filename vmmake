@@ -173,7 +173,7 @@ if [ -z "$KERNCONFIG" ]; then
     KERNCONFIG=BHYVE
 fi
 
-if [ -z "$NONET" ]; then
+if [ $NONET -eq 0 ]; then
     if [ -z "$IPADDR" ]; then
         ifconfig bridge0 >/dev/null || exit 1
         IPADDR=$(ifconfig bridge0 | grep -E '^[[:space:]]*inet' | head -n 1 | \
