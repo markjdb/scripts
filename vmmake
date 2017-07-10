@@ -201,7 +201,7 @@ if [ -z "$NUMFILES" ]; then
     NUMFILES=$(cat ${DESTDIR}/METALOG | wc -l)
 fi
 
-if [ $MKSRC ]; then
+if [ $MKSRC -eq 1 ]; then
     echo "Installing source..."
     cp -vR * $DESTDIR/usr/src
 fi
