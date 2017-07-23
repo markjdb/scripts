@@ -1,0 +1,316 @@
+#!/bin/sh
+
+warn()
+{
+    echo "$(basename $0): $1" >&2
+}
+
+err()
+{
+    warn "$1"
+    exit 1
+}
+
+usage()
+{
+    local progname
+
+    # XXX add descriptions
+    progname=$(basename $0)
+    cat >&2 <<__EOF__
+usage: $progname provision [-d <datastore>] <vm image>
+       $progname deprovision
+       $progname runtests
+__EOF__
+    exit 1
+}
+
+#
+# (De-)Provisioning routines.
+#
+
+# Arguments:
+# 1. VM image path
+# 2. main filesystem partition number in image
+# XXX want some way of auto-discovering the right partition.
+provision::main()
+{
+    local bridge ds image md mntdir partnum
+
+    image=$1
+    partnum=$2
+
+    ds=$(vm datastore list | awk '$1 == "kerneldumptest"{print}')
+    [ -z "$ds" ] || err "datastore already exists. Run deprovision first."
+    ds=$(mktemp -d)
+    vm datastore add kerneldumptest $ds || : # XXX always exits status 1
+
+    # XXX needs to be specified in the template.
+    vm switch create test
+    bridge=$(vm switch list | awk '$1 == "test"{print $3}')
+    ifconfig $bridge inet 192.168.${bridge#bridge}.1
+
+    md=$(mdconfig -a -t vnode -f $image)
+    mntdir=$(mktemp -d)
+    mount /dev/${md}p${partnum} $mntdir
+
+    # XXX shouldn't really live in the root of the datastore.
+    ssh-keygen -t rsa -N "" -f ${ds}/id_rsa
+    echo "PermitRootLogin yes" >> ${mntdir}/etc/ssh/sshd_config
+    echo "UseDNS no" >> ${mntdir}/etc/ssh/sshd_config
+    mkdir -p ${mntdir}/root/.ssh
+    cat ${ds}/id_rsa.pub > ${mntdir}/root/.ssh/authorized_keys
+
+    # XXX need a better way to do this... 
+    echo "ifconfig_vtnet0=\"inet 192.168.${bridge#bridge}.2\"" >> ${mntdir}/etc/rc.conf
+    echo "defaultrouter=192.168.${bridge#bridge}.1" >> ${mntdir}/etc/rc.conf
+
+    umount $mntdir
+    mdconfig -d -u ${md#md}
+
+    # XXX need to add our own template to the dir.
+    vm create -d kerneldumptest -t default kerneldumptest || : # XXX always exits status 1
+}
+
+deprovision::main()
+{
+    local dspath
+
+    vm stop kerneldumptest || :
+
+    dspath=$(vm datastore list | awk '$1 == "kerneldumptest"{print $3}')
+    if [ -n "$dspath" ]; then
+        vm datastore remove kerneldumptest || : # XXX always exits status 1
+        rm -rf $dspath
+    fi
+
+    vm switch destroy test || :
+}
+
+#
+# Test code
+#
+
+test::runcmd()
+{
+    local cmd
+
+    cmd=$1
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+        -i ${DSDIR}/id_rsa root@${IPADDR} "$cmd"
+}
+
+test::setvars()
+{
+    local bridge dsdir ipaddr
+
+    dsdir=$(vm datastore list | awk '$1 == "kerneldumptest"{print $3}')
+    bridge=$(vm switch list | awk '$1 == "test"{print $3}')
+    ipaddr=$(ifconfig $bridge | awk '/^[[:space:]]+inet /{print $2}')
+    ipaddr=${ipaddr%[0-9]*}2
+
+    DSDIR=$dsdir
+    IPADDR=$ipaddr
+}
+
+test::setup()
+{
+    test::setvars
+    vm start kerneldumptest || :
+    test::waitforonline
+    test::runcmd "sync; sync; sync"
+}
+
+test::waitforonline()
+{
+    local count
+
+    count=120
+    while [ $count -gt 0 ]; do
+        nc -w 1 -z $IPADDR 22 >/dev/null 2>&1 && return 0
+        sleep 1
+        count=$(($count - 1))
+    done
+
+    warn "timed out waiting for ssh to come up"
+    return 1
+}
+
+runtests::main()
+{
+    local status
+
+    test::setup
+
+    echo "1..5"
+
+    set +e
+
+    # Test case 1: basic minidump.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "dumpon /dev/vtbd0p2" # XXX hardcoded partition number
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "test -f /var/crash/vmcore.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.last"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) > /dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 1 ok
+    else
+        echo 1 not ok
+    fi
+
+    # Test case 2: basic full dump.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "dumpon /dev/vtbd0p2" # XXX hardcoded partition number
+        test::runcmd "sysctl debug.minidump=0"
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "test -f /var/crash/vmcore.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.last"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) > /dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 2 ok
+    else
+        echo 2 not ok
+    fi
+
+    # Test case 3: compressed minidump.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "dumpon -c /dev/vtbd0p2" # XXX hardcoded partition number
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "test -f /var/crash/vmcore.0.gz"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "gunzip /var/crash/vmcore.0.gz"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.0"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) >/dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 3 ok
+    else
+        echo 3 not ok
+    fi
+
+    # Test case 4: encrypted minidump.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "openssl genrsa -out /var/crash/private.pem 4096"
+        test::runcmd "openssl rsa -in /var/crash/private.pem \
+                      -out /var/crash/public.pem -pubout"
+        test::runcmd "dumpon -k /var/crash/public.pem /dev/vtbd0p2" # XXX hardcoded partition number
+        test::runcmd "fsync /var/crash/*"
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "test -f /var/crash/vmcore_encrypted.0"
+        test::runcmd "test -f /var/crash/key.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "decryptcore -p /var/crash/private.pem -k /var/crash/key.0 \
+                      -e /var/crash/vmcore_encrypted.0 -c /var/crash/vmcore.0"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.0"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) >/dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 4 ok
+    else
+        echo 4 not ok
+    fi
+
+    # Test case 5: compressed, encrypted minidump.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "openssl genrsa -out /var/crash/private.pem 4096"
+        test::runcmd "openssl rsa -in /var/crash/private.pem \
+                      -out /var/crash/public.pem -pubout"
+        test::runcmd "dumpon -c -k /var/crash/public.pem /dev/vtbd0p2" # XXX hardcoded partition number
+        test::runcmd "fsync /var/crash/*"
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "test -f /var/crash/vmcore_encrypted.0"
+        test::runcmd "test -f /var/crash/key.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "decryptcore -p /var/crash/private.pem -k /var/crash/key.0 \
+                      -e /var/crash/vmcore_encrypted.0 -c /var/crash/vmcore.0.gz"
+        test::runcmd "gunzip /var/crash/vmcore.0.gz"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.0"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) >/dev/null 2>&1
+
+    if [ $status -eq 0 ]; then
+        echo 5 ok
+    else
+        echo 5 not ok
+    fi
+
+    set -e
+}
+
+#
+# Execution starts here.
+#
+
+set -e
+
+[ $# -ge 1 ] || usage
+
+args=
+verb=$1
+case "$verb" in
+provision)
+    [ $# -eq 2 ] || usage
+    args="$2 3"
+    ;;
+deprovision)
+    ;;
+runtests)
+    ;;
+*)
+    usage
+esac
+
+# Check some preconditions.
+[ $(id -u) -eq 0 ] || err "must be run as root"
+pkg info -q vm-bhyve || err "vm-bhyve is not installed"
+kldstat -q -m vmm || kldload vmm || err "failed to load vmm.ko"
+
+${verb}::main $args
