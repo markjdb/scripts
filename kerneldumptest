@@ -275,6 +275,7 @@ runtests::main()
                       kgdb /boot/kernel/kernel /var/crash/vmcore.0"
         test::runcmd "crashinfo -d /var/crash -n 0"
     ) >/dev/null 2>&1
+    status=$?
 
     if [ $status -eq 0 ]; then
         echo 5 ok
