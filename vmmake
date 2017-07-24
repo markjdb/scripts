@@ -9,7 +9,9 @@
 
 usage()
 {
-    echo "usage: $(basename $0) [-tkx] [-a <arch>] [-c <kernel config>] [-f <free files>] [-p <pkgs>] [-s <size>] <img>" >&2
+    cat >&2 <<__EOF__
+usage: $(basename $0) [-tkx] [-a <arch>] [-c <kernconf>] [-f <numfree>] [-p <pkgs>] [-s <size>] <img>
+__EOF__
     exit 1
 }
 
@@ -21,7 +23,7 @@ bootstrap()
     pfile=$1
     pkgs=$2
 
-    md=$(mdconfig -f $pfile)
+    md=$(mdconfig -S $SECTORSIZE -f $pfile)
     mdir=$(mktemp -d)
 
     mount /dev/$md $mdir
@@ -79,8 +81,13 @@ install_config()
 /dev/gpt/swapfs none swap sw 0 0
 none /proc procfs rw 0 0
 none /dev/fd fdescfs rw 0 0
+__EOF__
+
+    if [ $NONET -eq 0 ]; then
+        cat >> ${destdir}/$fstab <<__EOF__
 ${IPADDR}:$(pwd) /usr/src nfs ro 0 0
 __EOF__
+    fi
 
     localtime=etc/localtime
     cp -f /$localtime ${destdir}/$localtime
@@ -118,14 +125,15 @@ set -e
 
 ARCH=$(uname -m)
 IPADDR=
-PARTSIZE=10g
-PACKAGES=
-TMPFS=
 KERNCONFIG=
-NUMFILES=
 MKSRC=0
 NONET=0
-while getopts a:c:f:i:kp:s:tx o; do
+NUMFILES=
+PARTSIZE=10g
+PACKAGES=
+SECTORSIZE=512
+TMPFS=
+while getopts a:c:f:i:kp:S:s:tx o; do
     case "$o" in
     a)
         ARCH=$OPTARG
@@ -147,6 +155,9 @@ while getopts a:c:f:i:kp:s:tx o; do
         ;;
     s)
         PARTSIZE=$OPTARG
+        ;;
+    S)
+        SECTORSIZE=$OPTARG
         ;;
     t)
         TMPFS=1
@@ -182,7 +193,6 @@ if [ $NONET -eq 0 ]; then
 fi
 
 IMAGE=${1:-/tmp/vm.raw}
-OBJDIR=/usr/obj/$(readlink -f $(pwd))
 PARTFILE=$(mktemp)
 
 DESTDIR=$(mktemp -d)
@@ -192,7 +202,8 @@ fi
 
 trap "cleanup; exit 1" EXIT SIGINT SIGHUP SIGTERM
 
-make -j $(sysctl -n hw.ncpu) -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=$KERNCONFIG MACHINE=$ARCH TARGET_ARCH=$ARCH \
+make -j $(sysctl -n hw.ncpu) -s -DNO_ROOT DESTDIR=$DESTDIR KERNCONF=$KERNCONFIG \
+    MACHINE=$ARCH TARGET_ARCH=$ARCH \
     DISTDIR= installworld installkernel distribution
 
 install_config $DESTDIR $KERNCONFIG
@@ -206,14 +217,14 @@ if [ $MKSRC -eq 1 ]; then
     cp -vR * $DESTDIR/usr/src
 fi
 
-makefs -B little -f $NUMFILES -o label=VM -M $PARTSIZE \
+makefs -B little -f $NUMFILES -o label=VM -M $PARTSIZE -S $SECTORSIZE \
     -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
 
 if [ -n "$PACKAGES" ]; then
     bootstrap $PARTFILE $PACKAGES
 fi
 
-mkimg -s gpt -f raw -b ${DESTDIR}/boot/pmbr \
+mkimg -s gpt -f raw -S $SECTORSIZE -b ${DESTDIR}/boot/pmbr \
     -p freebsd-boot/bootfs:=${DESTDIR}/boot/gptboot \
     -p freebsd-swap/swapfs::2G \
     -p freebsd-ufs/rootfs:=${PARTFILE} \
