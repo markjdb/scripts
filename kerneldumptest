@@ -142,7 +142,7 @@ runtests::main()
 
     test::setup
 
-    echo "1..5"
+    echo "1..10"
 
     set +e
 
@@ -282,6 +282,149 @@ runtests::main()
     else
         echo 5 not ok
     fi
+
+    # Test case 6: minidump on 4Kn drive.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "dumpon /dev/vtbd1" # XXX hardcoded device
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "savecore /var/crash /dev/vtbd1"
+        test::runcmd "test -f /var/crash/vmcore.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.last"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) > /dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 6 ok
+    else
+        echo 6 not ok
+    fi
+
+    # Test case 7: full dump on 4Kn drive.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "dumpon /dev/vtbd1" # XXX hardcoded device
+        test::runcmd "sysctl debug.minidump=0"
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "savecore /var/crash /dev/vtbd1"
+        test::runcmd "test -f /var/crash/vmcore.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.last"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) > /dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 7 ok
+    else
+        echo 7 not ok
+    fi
+
+    # Test case 8: compressed minidump on 4Kn drive.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "dumpon -c /dev/vtbd1" # XXX hardcoded device number
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "savecore /var/crash /dev/vtbd1"
+        test::runcmd "test -f /var/crash/vmcore.0.gz"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "gunzip /var/crash/vmcore.0.gz"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.0"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) >/dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 8 ok
+    else
+        echo 8 not ok
+    fi
+
+    # Test case 9: encrypted minidump on 4Kn drive.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "openssl genrsa -out /var/crash/private.pem 4096"
+        test::runcmd "openssl rsa -in /var/crash/private.pem \
+                      -out /var/crash/public.pem -pubout"
+        test::runcmd "dumpon -k /var/crash/public.pem /dev/vtbd1" # XXX hardcoded device number
+        test::runcmd "fsync /var/crash/*"
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "savecore /var/crash /dev/vtbd1"
+        test::runcmd "test -f /var/crash/vmcore_encrypted.0"
+        test::runcmd "test -f /var/crash/key.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "decryptcore -p /var/crash/private.pem -k /var/crash/key.0 \
+                      -e /var/crash/vmcore_encrypted.0 -c /var/crash/vmcore.0"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.0"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) >/dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 9 ok
+    else
+        echo 9 not ok
+    fi
+
+    # Test case 10: compressed, encrypted minidump on 4Kn drive.
+    (
+        set -e
+        test::runcmd "rm -rf /var/crash/*"
+        test::runcmd "dumpon /dev/null"
+        test::runcmd "openssl genrsa -out /var/crash/private.pem 4096"
+        test::runcmd "openssl rsa -in /var/crash/private.pem \
+                      -out /var/crash/public.pem -pubout"
+        test::runcmd "dumpon -c -k /var/crash/public.pem /dev/vtbd1" # XXX hardcoded device number
+        test::runcmd "fsync /var/crash/*"
+        test::runcmd "sysctl debug.kdb.panic=1" || : &
+        sleep 1 # Give the system a second to panic.
+        test::waitforonline
+        test::runcmd "savecore /var/crash /dev/vtbd1"
+        test::runcmd "test -f /var/crash/vmcore_encrypted.0"
+        test::runcmd "test -f /var/crash/key.0"
+        test::runcmd "test -f /var/crash/info.0"
+        test::runcmd "grep -q '^[[:space:]]*Dump Status: good' /var/crash/info.0"
+        test::runcmd "decryptcore -p /var/crash/private.pem -k /var/crash/key.0 \
+                      -e /var/crash/vmcore_encrypted.0 -c /var/crash/vmcore.0.gz"
+        test::runcmd "gunzip /var/crash/vmcore.0.gz"
+        test::runcmd "echo 'thread apply all bt' |
+                      kgdb /boot/kernel/kernel /var/crash/vmcore.0"
+        test::runcmd "crashinfo -d /var/crash -n 0"
+    ) >/dev/null 2>&1
+    status=$?
+
+    if [ $status -eq 0 ]; then
+        echo 10 ok
+    else
+        echo 10 not ok
+    fi
+
 
     set -e
 }
