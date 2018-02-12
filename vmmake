@@ -217,7 +217,8 @@ if [ $MKSRC -eq 1 ]; then
     cp -vR * $DESTDIR/usr/src
 fi
 
-makefs -B little -f $NUMFILES -o label=VM -M $PARTSIZE -S $SECTORSIZE \
+makefs -B little -f $NUMFILES -M $PARTSIZE -S $SECTORSIZE \
+    -o label=VM -o softupdates=1 -o version=2 -o bsize=$((4 * 8192)) -o fsize=8192 \
     -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
 
 if [ -n "$PACKAGES" ]; then
