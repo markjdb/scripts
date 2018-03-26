@@ -1,0 +1,3 @@
+#!/usr/sbin/dtrace -s
+
+fbt::$1:entry { @[stack()] = count(); }
