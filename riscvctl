@@ -1,0 +1,62 @@
+#!/bin/sh
+
+usage()
+{
+    echo "$(basename $0): [kern|world] <args>" >&2
+    exit 1
+}
+
+set -e
+cd ~/src/freebsd-dev/dev/riscv
+
+case "$1" in
+kern)
+    shift
+    if [ $# -ne 1 -o "$1" != "-a" ]; then
+        flags=-DKERNFAST
+    fi
+    nice -n 20 make $flags -j$(sysctl -n hw.ncpu) -s buildkernel KERNCONF=GENERIC \
+        TARGET_ARCH=riscv64 CROSS_TOOLCHAIN=riscv64-gcc
+
+    destdir=${HOME}/src/riscv/world
+    make installkernel KERNCONF=GENERIC TARGET_ARCH=riscv64 DESTDIR=$destdir -DNO_ROOT
+    ;;
+world)
+    shift
+    destdir=${HOME}/src/riscv/world
+    if [ $# -ne 1 -o "$1" != "-a" ]; then
+        flags=-DNO_CLEAN
+    fi
+    opts="WITHOUT_DTRACE_TESTS= WITHOUT_OFED="
+    nice -n 20 make $flags -j$(sysctl -n hw.ncpu) -s buildworld \
+        $opts WITHOUT_FORMAT_EXTENSIONS= \
+        TARGET_ARCH=riscv64 CROSS_TOOLCHAIN=riscv64-gcc
+
+    make TARGET_ARCH=riscv64 $opts -DNO_ROOT DESTDIR=$destdir installworld
+    make TARGET_ARCH=riscv64 $opts -DNO_ROOT DESTDIR=$destdir distribution
+
+    cd $destdir
+    echo 'hostname=qemu' >> etc/rc.conf
+    echo '/dev/vtbd0    /       ufs     ro      1       1' > etc/fstab
+    echo './etc/fstab type=file uname=root gname=wheel mode=0644' >> METALOG
+    echo './etc/rc.conf type=file uname=root gname=wheel mode=0644' >> METALOG
+    makefs -D -f 1000000 -o version=2 -s 8g ${HOME}/src/riscv/riscv.img METALOG
+    ;;
+bbl)
+    cd ~/src/riscv/riscv-pk
+    rm -rf build
+    mkdir build
+    cd build
+    CFLAGS=-nostdlib ../configure --enable-logo --prefix=${HOME}/src/riscv --host=riscv64-unknown-freebsd12.0 \
+        --with-payload=${HOME}/src/riscv/world/boot/kernel/kernel
+    gmake bbl
+    ;;
+qemu)
+    sudo qemu-system-riscv64 -machine virt -m 2048M -kernel ${HOME}/src/riscv/riscv-pk/build/bbl -nographic \
+        -drive file=${HOME}/src/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 \
+        -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0 -smp 4
+    ;;
+*)
+    usage
+    ;;
+esac
