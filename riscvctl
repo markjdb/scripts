@@ -62,6 +62,9 @@ qemu)
         -drive file=${img},format=raw,id=hd0 -device virtio-blk-device,drive=hd0 \
         -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0 -smp 4
     ;;
+spike)
+    sudo spike -m2048 -p2 ${HOME}/src/riscv/riscv-pk/build/bbl
+    ;;
 *)
     usage
     ;;
