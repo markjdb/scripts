@@ -10,16 +10,16 @@ set -e
 cd ~/src/freebsd-dev/dev/riscv
 
 case "$1" in
-kern)
+kern|kernel)
     shift
     if [ $# -ne 1 -o "$1" != "-a" ]; then
         flags=-DKERNFAST
     fi
-    nice -n 20 make $flags -j$(sysctl -n hw.ncpu) -s buildkernel KERNCONF=GENERIC \
+    nice -n 20 make $flags -j$(sysctl -n hw.ncpu) buildkernel KERNCONF=GENERIC -s \
         TARGET_ARCH=riscv64 CROSS_TOOLCHAIN=riscv64-gcc
 
     destdir=${HOME}/src/riscv/world
-    make installkernel KERNCONF=GENERIC TARGET_ARCH=riscv64 DESTDIR=$destdir -DNO_ROOT
+    make installkernel KERNCONF=GENERIC TARGET_ARCH=riscv64 DESTDIR=$destdir -s -DNO_ROOT
     ;;
 world)
     shift
@@ -37,7 +37,7 @@ world)
 
     cd $destdir
     echo 'hostname=qemu' >> etc/rc.conf
-    echo '/dev/vtbd0    /       ufs     ro      1       1' > etc/fstab
+    echo '/dev/vtbd0    /       ufs     rw      1       1' > etc/fstab
     echo './etc/fstab type=file uname=root gname=wheel mode=0644' >> METALOG
     echo './etc/rc.conf type=file uname=root gname=wheel mode=0644' >> METALOG
     makefs -D -f 1000000 -o version=2 -s 8g ${HOME}/src/riscv/riscv.img METALOG
@@ -47,13 +47,19 @@ bbl)
     rm -rf build
     mkdir build
     cd build
-    CFLAGS=-nostdlib ../configure --enable-logo --prefix=${HOME}/src/riscv --host=riscv64-unknown-freebsd12.0 \
-        --with-payload=${HOME}/src/riscv/world/boot/kernel/kernel
-    gmake bbl
+    CFLAGS=-nostdlib ../configure --enable-logo --prefix=${HOME}/src/riscv --host=riscv64-unknown-freebsd13.0 \
+        --with-arch=rv64imafdc --with-payload=${HOME}/src/riscv/world/boot/kernel/kernel
+    gmake -j $(sysctl -n hw.ncpu) bbl
     ;;
 qemu)
+    shift
+    if [ $# -eq 2 -a "$1" = "-i" ]; then
+        img=$2
+    else
+        img=${HOME}/src/riscv/riscv.img
+    fi
     sudo qemu-system-riscv64 -machine virt -m 2048M -kernel ${HOME}/src/riscv/riscv-pk/build/bbl -nographic \
-        -drive file=${HOME}/src/riscv/riscv.img,format=raw,id=hd0 -device virtio-blk-device,drive=hd0 \
+        -drive file=${img},format=raw,id=hd0 -device virtio-blk-device,drive=hd0 \
         -netdev tap,ifname=tap0,script=no,id=net0 -device virtio-net-device,netdev=net0 -smp 4
     ;;
 *)
