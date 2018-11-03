@@ -1,7 +1,7 @@
 #!/usr/sbin/dtrace -s
 
 #pragma D option quiet
-#pragma D option strsize=4096
+#pragma D option strsize=16556
 
 fbt::kern_execve:entry
 {
