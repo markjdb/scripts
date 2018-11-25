@@ -1,5 +1,8 @@
 # Helpers.
 
+def has_feature(name):
+    return gdb.lookup_symbol('sysctl___kern_features_' + name)[0] is not None
+
 def cast_thru_ptr(val, t):
     return gdb.parse_and_eval("({} *){}".format(t, val)).dereference()
 
