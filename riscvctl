@@ -2,7 +2,7 @@
 
 usage()
 {
-    echo "$(basename $0): [kern|world] <args>" >&2
+    echo "$(basename $0): [kern|world|bbl|qemu|spike] <args>" >&2
     exit 1
 }
 
