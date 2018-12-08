@@ -12,13 +12,8 @@ def list_foreach(head, field):
 def tailq_foreach(head, field):
     return _queue_foreach(head, field, "tqh_first", "tqe_next")
 
-cached_procs = dict()
-cached_threads = dict()
-
 def pfind(pid):
-    global cached_procs
-
-    p = cached_procs.get(pid)
+    p = pfind.cached_procs.get(pid)
     if p is not None:
         print("cached")
         return p
@@ -26,15 +21,13 @@ def pfind(pid):
     allproc = gdb.lookup_global_symbol("allproc").value()
     for p in list_foreach(allproc, "p_list"):
         npid = p['p_pid']
-        cached_procs[int(npid)] = p
+        pfind.cached_procs[int(npid)] = p
         if npid == pid:
             return p
-    return None
+pfind.cached_procs = dict()
 
 def tdfind(tid, pid=-1):
-    global cached_threads
-
-    td = cached_threads.get(tid)
+    td = tdfind.cached_threads.get(int(tid))
     if td is not None:
         return td
 
@@ -44,10 +37,10 @@ def tdfind(tid, pid=-1):
             continue
         for td in tailq_foreach(p['p_threads'], "td_plist"):
             ntid = td['td_tid']
-            cached_threads[int(ntid)] = td
+            tdfind.cached_threads[int(ntid)] = td
             if ntid == tid:
                 return td
-    return None
+tdfind.cached_threads = dict()
 
 class curthread(gdb.Function):
     def __init__(self):
