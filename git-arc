@@ -1,0 +1,128 @@
+#!/bin/sh
+
+err()
+{
+    echo "$(basename $0): $1" >&2
+    exit 1
+}
+
+usage()
+{
+    cat <<__EOF__
+Usage: git arc <command> <arguments>
+
+Commands:
+  create [-r <reviewers>] commit
+  update
+__EOF__
+
+    exit 1
+}
+
+create_one_review()
+{
+    local commit dir msg reviewers
+
+    commit=$1
+    reviewers=$2
+
+    git checkout $commit
+
+    dir=$(git rev-parse --git-dir)/arc
+    mkdir -p "$dir"
+
+    msg=${dir}/create-message
+    git show -s --format='%B' $commit > $msg
+    printf "\nTest Plan:\n" >> $msg
+    printf "\nReviewers:\n" >> $msg
+    printf "${reviewers}\n" >> $msg
+    printf "\nSubscribers:\n" >> $msg
+
+    yes | env EDITOR=true arc diff --create --allow-untracked HEAD~
+    [ $? -eq 0 ] || err "could not create Phabricator diff"
+}
+
+save_head()
+{
+    local commit orig
+
+    if ! orig=$(git symbolic-ref --short -q HEAD); then
+        orig=$(git show -s --pretty=%H HEAD)
+    fi
+    echo $orig
+}
+
+gitarc::create()
+{
+    local commit commits orig reviewers
+
+    while getopts r: o; do
+        case "$o" in
+        r)
+            reviewers="$OPTARG"
+            ;;
+        *)
+            usage
+            ;;
+        esac
+        shift $((OPTIND-1))
+    done
+
+    orig=$(save_head)
+    if git cat-file -e "$1"'^{commit}' >/dev/null 2>&1; then
+        create_one_review $(git rev-parse "$1") "$reviewers"
+    else
+        commits=$(git rev-list $(git rev-parse "$1") | \
+            awk '{a[i++] = $0} END{for (j = i-1; j >= 0; j--) print a[j]}')
+        [ -n "$commits" ] || err "invalid commit ID $1"
+        for commit in ${commits}; do
+            echo $commit
+            #create_one_review "$commit" "$reviewers"
+        done
+    fi
+    git checkout $orig
+}
+
+gitarc::update()
+{
+    local commit rev orig title
+
+    commit=$1
+    title=$(git show -s --format=%s $commit)
+    rev=$(arc list | fgrep "$title" | egrep -o 'D[1-9][0-9]*:' | tr -d ':')
+    if [ -z "$rev" ]; then
+        err "could not find review for '${title}'"
+    elif [ $(echo "$rev" | wc -l) -ne 1 ]; then
+        err "found multiple reviews with the same title"
+    fi
+
+    orig=$(save_head)
+    git checkout $commit
+
+    arc diff --update $rev HEAD~
+
+    git checkout $orig
+}
+
+set -e
+
+[ $# -ge 1 ] || usage
+
+case "$1" in
+create|update)
+    ;;
+*)
+    usage
+    ;;
+esac
+verb=$1
+shift
+
+# Pull in some git helper functions.
+git_sh_setup=$(git --exec-path)/git-sh-setup
+[ -f "$git_sh_setup" ] || err "cannot find git-sh-setup"
+SUBDIRECTORY_OK=y
+USAGE=
+. "$git_sh_setup"
+
+gitarc::${verb} $@
