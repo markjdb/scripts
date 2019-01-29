@@ -76,8 +76,7 @@ gitarc::create()
             awk '{a[i++] = $0} END{for (j = i-1; j >= 0; j--) print a[j]}')
         [ -n "$commits" ] || err "invalid commit ID $1"
         for commit in ${commits}; do
-            echo $commit
-            #create_one_review "$commit" "$reviewers"
+            create_one_review "$commit" "$reviewers"
         done
     fi
     git checkout $orig
