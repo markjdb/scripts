@@ -12,7 +12,8 @@ usage()
 Usage: git arc <command> <arguments>
 
 Commands:
-  create [-r <reviewers>] commit
+  create [-r <reviewers>] <commit>
+  patch <revision1> [<revision2> ...]
   update
 __EOF__
 
@@ -82,6 +83,21 @@ gitarc::create()
     git checkout $orig
 }
 
+gitarc::patch()
+{
+    local rev
+
+    if [ $# -eq 1 ]; then
+        usage
+    fi
+
+    for rev in $@; do
+        arc patch --skip-dependencies --nocommit --nobranch --force $rev
+        echo "Applying ${rev}..."
+        [ $? -eq 0 ] || break
+    done
+}
+
 gitarc::update()
 {
     local commit rev orig title
@@ -108,7 +124,7 @@ set -e
 [ $# -ge 1 ] || usage
 
 case "$1" in
-create|update)
+create|patch|update)
     ;;
 *)
     usage
