@@ -6,9 +6,9 @@ err()
     exit 1
 }
 
-usage()
+err_usage()
 {
-    cat <<__EOF__
+    cat >&2 <<__EOF__
 Usage: git arc <command> <arguments>
 
 Commands:
@@ -63,7 +63,7 @@ gitarc::create()
             reviewers="$OPTARG"
             ;;
         *)
-            usage
+            err_usage
             ;;
         esac
         shift $((OPTIND-1))
@@ -87,8 +87,8 @@ gitarc::patch()
 {
     local rev
 
-    if [ $# -eq 1 ]; then
-        usage
+    if [ $# -eq 0 ]; then
+        err_usage
     fi
 
     for rev in $@; do
@@ -121,13 +121,13 @@ gitarc::update()
 
 set -e
 
-[ $# -ge 1 ] || usage
+[ $# -ge 1 ] || err_usage
 
 case "$1" in
 create|patch|update)
     ;;
 *)
-    usage
+    err_usage
     ;;
 esac
 verb=$1
