@@ -14,7 +14,14 @@ Usage: git arc <command> <arguments>
 Commands:
   create [-r <reviewers>] <commit>
   patch <revision1> [<revision2> ...]
-  update
+  update <commit>
+
+Create or update a FreeBSD Phabricator review, or apply a patch
+from an existing review to a local git checkout.  There is a one-to-one
+relationship between git commits and Differential revisions, and the
+Differential review title must match the summary line of the corresponding
+commit.  If the review is created using this script, that will happen
+automatically.
 __EOF__
 
     exit 1
