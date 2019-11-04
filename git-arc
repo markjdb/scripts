@@ -34,6 +34,10 @@ create_one_review()
     commit=$1
     reviewers=$2
 
+    if ! show_and_prompt $commit; then
+        return
+    fi
+
     git checkout $commit
 
     dir=$(git rev-parse --git-dir)/arc
@@ -50,6 +54,26 @@ create_one_review()
     [ $? -eq 0 ] || err "could not create Phabricator diff"
 }
 
+show_and_prompt()
+{
+    local commit
+
+    commit=$1
+
+    git show $commit
+    printf "\nDoes this look OK? [Y/n] "
+    read resp
+
+    case $resp in
+    [Nn]*)
+        return 1
+        ;;
+    *)
+        return 0
+        ;;
+    esac
+}
+
 save_head()
 {
     local commit orig
@@ -58,6 +82,14 @@ save_head()
         orig=$(git show -s --pretty=%H HEAD)
     fi
     echo $orig
+}
+
+restore_head()
+{
+    local orig
+
+    orig=$1
+    git checkout $orig
 }
 
 gitarc::create()
@@ -77,17 +109,19 @@ gitarc::create()
     done
 
     orig=$(save_head)
-    if git cat-file -e "$1"'^{commit}' >/dev/null 2>&1; then
-        create_one_review $(git rev-parse "$1") "$reviewers"
-    else
-        commits=$(git rev-list $(git rev-parse "$1") | \
-            awk '{a[i++] = $0} END{for (j = i-1; j >= 0; j--) print a[j]}')
-        [ -n "$commits" ] || err "invalid commit ID $1"
-        for commit in ${commits}; do
-            create_one_review "$commit" "$reviewers"
-        done
-    fi
-    git checkout $orig
+    for chash in $@; do
+        if git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
+            create_one_review $(git rev-parse "${chash}") "$reviewers"
+        else
+            commits=$(git rev-list $(git rev-parse "${chash}") | \
+                awk '{a[i++] = $0} END{for (j = i-1; j >= 0; j--) print a[j]}')
+            [ -n "$commits" ] || err "invalid commit ID ${chash}"
+            for commit in ${commits}; do
+                create_one_review "$commit" "$reviewers"
+            done
+        fi
+    done
+    restore_head $orig
 }
 
 gitarc::patch()
@@ -118,12 +152,16 @@ gitarc::update()
         err "found multiple reviews with the same title"
     fi
 
+    if ! show_and_prompt $commit; then
+        return
+    fi
+
     orig=$(save_head)
     git checkout $commit
 
     arc diff --update $rev HEAD~
 
-    git checkout $orig
+    restore_head $orig
 }
 
 set -e
