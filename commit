@@ -1,0 +1,62 @@
+#!/bin/sh
+
+err()
+{
+    echo "$(basename $0): $1" >&2
+    exit 1
+}
+
+usage()
+{
+    echo "Usage: $(basename $0) [-n] <rev-list>"
+}
+
+set -e
+
+if [ "$1" = "-n" ]; then
+    shift
+    dryrun=1
+else
+    dryrun=0
+fi
+
+: ${SVN=/home/mark/media/src/freebsd-svn}
+
+revs=$1
+if git cat-file -e "${revs}"'^{commit}' >/dev/null 2>&1; then
+    commits=$(git rev-parse "${revs}")
+else
+    commits=$(git rev-list $(git rev-parse "$1") | tail -r)
+fi
+
+for commit in ${commits}; do
+    msg=$(mktemp)
+    git log -n 1 --format=%B $commit > $msg
+    patch=$(mktemp)
+    git show $commit > $patch
+    pwd=$(pwd)
+    cd ${SVN}/head
+    test -z "$(svn status)" || err "unclean branch"
+    svn up
+    added=$(svn patch $patch | awk '{if ($1 == "A") print $2}')
+    for file in ${added}; do
+        svn propset svn:keywords "FreeBSD=%H" $file
+    done
+    ( cat ${msg}; svn diff ) | less
+    printf "\nIs this OK? [y/N] "
+    read resp
+    case $resp in
+    [Yy]*)
+        if [ $dryrun -eq 0 ]; then
+            svn commit --file $msg
+        fi
+        ;;
+    *)
+        rm -f $msg $patch
+        cd $pwd
+        err "aborted"
+        ;;
+    esac
+    rm -f $msg $patch
+    cd $pwd
+done

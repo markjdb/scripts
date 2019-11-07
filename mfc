@@ -1,0 +1,64 @@
+#!/bin/sh
+
+err()
+{
+    echo "$(basename $0): $1"
+    exit 1
+}
+
+usage()
+{
+    echo "usage: $(basename $0) [<rev> | <rev1>,<rev2>,... | <rev1>-<rev2>" >&2
+    exit 1
+}
+
+TAGS="admbugs PR"
+
+test -d ../../.svn || err "are you in the root of a stable branch?"
+test -x $(which $EDITOR) || err "set EDITOR"
+
+set -e
+
+log=$(mktemp)
+
+#IFS=','
+for rev in $1; do
+    test -z "$(svn status)" || err "unclean branch"
+    svn up
+    svn merge -c $rev ^/head .
+
+    revlist=
+    oldifs=$IFS
+    IFS=','
+    for _rev in $rev; do
+        if [ -z "$revlist" ]; then
+            sep=""
+        else
+            sep=", "
+        fi
+        revlist="${revlist}${sep}r${_rev#r}"
+    done
+    IFS=$oldifs
+
+    echo "MFC ${revlist}:" >> $log
+    svn log -c $rev ^/head | sed -n -e 4p >> $log
+
+    for tag in $TAGS; do
+        line=$(svn log -c $rev ^/head | grep '^'$tag':' || true)
+        if [ -n "$line" ]; then
+            echo >> $log
+            echo "$line" >> $log
+        fi
+    done
+
+    $EDITOR $log
+
+    # Trigger an abort if the log file was truncated.
+    grep -q '^MFC' $log
+
+    svn commit -F $log
+
+    truncate -s 0 $log
+done
+
+rm -f $log
