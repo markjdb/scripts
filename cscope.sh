@@ -211,7 +211,7 @@ _csc-regen-db()
 
     . ${_CSCOPE_TEMPLATE_DIR}/${template}/dirs
 
-    patterns='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp'
+    patterns='-name *.[chSs] -o -name *.cpp -o -name *.cc -o -name *.hpp -o -name *.go'
     tmpf=$(mktemp)
 
     truncate -s 0 cscope.files
