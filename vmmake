@@ -55,13 +55,14 @@ bootstrap()
 
     # Set up to install packages.
     cp -f /etc/resolv.conf ${mdir}/etc/resolv.conf
-    chroot ${mdir} env ASSUME_ALWAYS_YES=yes /usr/sbin/pkg bootstrap -y
+    chroot ${mdir} sh -c "mount -t devfs none /dev && ASSUME_ALWAYS_YES=yes /usr/sbin/pkg bootstrap -y"
 
     # Do the thing.
     echo "$pkgs" | tr ',' ' ' | xargs chroot $mdir env ASSUME_ALWAYS_YES=yes \
         /usr/local/sbin/pkg install
 
     # Clean up, clean up.
+    umount ${mdir}/dev
     umount $mdir
     rmdir $mdir
     mdconfig -d -u ${md#md}
@@ -242,7 +243,7 @@ if [ $MKSRC -eq 1 ]; then
     cp -vR * $DESTDIR/usr/src
 fi
 
-makefs -B little -f $NUMFILES -M $PARTSIZE -S $SECTORSIZE \
+makefs -B little -f $NUMFILES -M $PARTSIZE -S $SECTORSIZE -Z \
     -o label=VM -o softupdates=1 -o version=2 -o bsize=$((4 * 8192)) -o fsize=8192 \
     -F ${DESTDIR}/METALOG $PARTFILE $DESTDIR
 
