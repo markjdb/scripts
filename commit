@@ -38,9 +38,15 @@ for commit in ${commits}; do
     cd ${SVN}/head
     test -z "$(svn status)" || err "unclean branch"
     svn up
-    added=$(svn patch $patch | awk '{if ($1 == "A") print $2}')
-    for file in ${added}; do
-        svn propset svn:keywords "FreeBSD=%H" $file
+    tmp=$(mktemp)
+    svn patch $patch > $tmp
+    if [ -n "$(awk '{if ($1 == "C") print $2}' $tmp)" ]; then
+        err "patch conflicts"
+    fi
+    for file in $(awk '{if ($1 == "A") print $2}' $tmp); do
+        if [ -f ${file} ]; then
+            svn propset svn:keywords "FreeBSD=%H" $file
+        fi
     done
     ( cat ${msg}; svn diff ) | less
     printf "\nIs this OK? [y/N] "
