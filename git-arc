@@ -61,15 +61,15 @@ show_and_prompt()
     commit=$1
 
     git show $commit
-    printf "\nDoes this look OK? [Y/n] "
+    printf "\nDoes this look OK? [y/N] "
     read resp
 
     case $resp in
-    [Nn]*)
-        return 1
+    [Yy])
+        return 0
         ;;
     *)
-        return 0
+        return 1
         ;;
     esac
 }
@@ -113,8 +113,7 @@ gitarc::create()
         if git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
             create_one_review $(git rev-parse "${chash}") "$reviewers"
         else
-            commits=$(git rev-list $(git rev-parse "${chash}") | \
-                awk '{a[i++] = $0} END{for (j = i-1; j >= 0; j--) print a[j]}')
+            commits=$(git rev-list $(git rev-parse "${chash}") | tail -r)
             [ -n "$commits" ] || err "invalid commit ID ${chash}"
             for commit in ${commits}; do
                 create_one_review "$commit" "$reviewers"
