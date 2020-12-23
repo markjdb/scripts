@@ -12,33 +12,89 @@ err_usage()
 Usage: git arc <command> <arguments>
 
 Commands:
-  create [-r <reviewers>] <commit>
-  patch <revision1> [<revision2> ...]
+  create [-r <reviewer1>[,<reviewer2>...]] [<commit>|<commit range>]
+  patch <diff1> [<diff2> ...]
   update <commit>
 
-Create or update a FreeBSD Phabricator review, or apply a patch
-from an existing review to a local git checkout.  There is a one-to-one
-relationship between git commits and Differential revisions, and the
-Differential review title must match the summary line of the corresponding
-commit.  If the review is created using this script, that will happen
-automatically.
+Description:
+  Create or update a FreeBSD Phabricator review, or apply a patch from an
+  existing review to a local git checkout.  There is a one-to-one relationship
+  between git commits and Differential revisions, and the Differential review
+  title must match the summary line of the corresponding commit.  If the review
+  is created using this script, that will happen automatically.
+
+Examples:
+
+  Create a Phabricator review using the contents of the most recent commit in
+  your git checkout.  The commit title is used as the review title, the commit
+  log message is used as the review description, markj@FreeBSD.org is added as
+  a reviewer.
+
+  $ git arc create -r markj HEAD
+
+  Create a series of Phabricator reviews for each of HEAD~2, HEAD~ and HEAD.
+  Pairs of consecutive commits are linked into a patch stack.  Note that the
+  first commit in the specified range is excluded.
+
+  $ git arc create HEAD~3..HEAD
+
+  Update the review corresponding to commit b409afcfedcdda.  The title of the
+  commit must be the same as it was when the review was created.  The review
+  description is not automatically updated.
+
+  $ git arc update b409afcfedcdda
+
+  Apply the patch in review D12345 to the currently checked-out tree, and stage
+  it.
+
+  $ git arc patch D12345
 __EOF__
 
     exit 1
 }
 
+diff2phid()
+{
+    local diff
+
+    diff=$1
+    if ! expr "$diff" : 'D[1-9][0-9]*$' >/dev/null; then
+        err "invalid diff ID $diff"
+    fi
+
+    echo '{"names":["'$diff'"]}' | arc call-conduit -- phid.lookup | \
+        jq -r "select(.response != []) | .response.${diff}.phid"
+}
+
+commit2diff()
+{
+    local commit diff title
+
+    commit=$1
+    title=$(git show -s --format=%s $commit)
+    diff=$(arc list | fgrep "$title" | egrep -o 'D[1-9][0-9]*:' | tr -d ':')
+    if [ -z "$diff" ]; then
+        err "could not find review for '${title}'"
+    elif [ $(echo "$diff" | wc -l) -ne 1 ]; then
+        err "found multiple reviews with the same title"
+    fi
+
+    echo $diff
+}
+
 create_one_review()
 {
-    local commit dir msg reviewers
+    local childphid commit dir msg parent parentphid reviewers
 
     commit=$1
     reviewers=$2
+    parent=$3
 
     if ! show_and_prompt $commit; then
         return
     fi
 
-    git checkout $commit
+    git checkout -q $commit
 
     dir=$(git rev-parse --git-dir)/arc
     mkdir -p "$dir"
@@ -50,8 +106,19 @@ create_one_review()
     printf "${reviewers}\n" >> $msg
     printf "\nSubscribers:\n" >> $msg
 
-    yes | env EDITOR=true arc diff --create --allow-untracked HEAD~
+    yes | env EDITOR=true \
+        arc diff --never-apply-patches --create --allow-untracked --browse HEAD~
     [ $? -eq 0 ] || err "could not create Phabricator diff"
+
+    if [ -n "$parent" ]; then
+        diff=$(commit2diff $commit)
+        [ -n "$diff" ] || err "failed to look up review ID for $commit"
+
+        childphid=$(diff2phid $diff)
+        parentphid=$(diff2phid $parent)
+        echo '{"objectIdentifier": "'${childphid}'", "transactions": [{"type": "parents.add", "value": ["'${parentphid}'"]}]}' | \
+            arc call-conduit -- differential.revision.edit
+    fi
 }
 
 show_and_prompt()
@@ -89,12 +156,12 @@ restore_head()
     local orig
 
     orig=$1
-    git checkout $orig
+    git checkout -q $orig
 }
 
 gitarc::create()
 {
-    local commit commits orig reviewers
+    local commit commits orig prev reviewers
 
     while getopts r: o; do
         case "$o" in
@@ -109,14 +176,18 @@ gitarc::create()
     done
 
     orig=$(save_head)
+    prev=""
     for chash in $@; do
         if git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
-            create_one_review $(git rev-parse "${chash}") "$reviewers"
+            commit=$(git rev-parse "${chash}")
+            create_one_review "$commit" "$reviewers" "$prev"
+            prev=$(commit2diff "$commit")
         else
             commits=$(git rev-list $(git rev-parse "${chash}") | tail -r)
             [ -n "$commits" ] || err "invalid commit ID ${chash}"
             for commit in ${commits}; do
-                create_one_review "$commit" "$reviewers"
+                create_one_review "$commit" "$reviewers" "$prev"
+                prev=$(commit2diff "$commit")
             done
         fi
     done
@@ -140,25 +211,22 @@ gitarc::patch()
 
 gitarc::update()
 {
-    local commit rev orig title
+    local commit diff orig
 
     commit=$1
-    title=$(git show -s --format=%s $commit)
-    rev=$(arc list | fgrep "$title" | egrep -o 'D[1-9][0-9]*:' | tr -d ':')
-    if [ -z "$rev" ]; then
-        err "could not find review for '${title}'"
-    elif [ $(echo "$rev" | wc -l) -ne 1 ]; then
-        err "found multiple reviews with the same title"
-    fi
+    diff=$(commit2diff $commit)
 
     if ! show_and_prompt $commit; then
         return
     fi
 
     orig=$(save_head)
-    git checkout $commit
+    git checkout -q $commit
 
-    arc diff --update $rev HEAD~
+    # The linter is stupid and applies patches to the working copy.
+    # This would be tolerable if it didn't try to correct "misspelled" variable
+    # names.
+    arc diff --update $diff HEAD~
 
     restore_head $orig
 }
