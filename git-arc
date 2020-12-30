@@ -154,11 +154,13 @@ diff2reviewers()
               }' |
         arc call-conduit -- differential.revision.search |
         jq '.response.data[0].attachments.reviewers.reviewers[] | select(.status == "accepted").reviewerPHID')
-    echo '{
-              "constraints": {"phids": ['$(echo -n $userids | tr '[:space:]' ',')']}
-          }' |
-        arc call-conduit -- user.search |
-        jq -r '.response.data[].fields.username'
+    if [ -n "$userids" ]; then
+        echo '{
+                  "constraints": {"phids": ['$(echo -n $userids | tr '[:space:]' ',')']}
+              }' |
+            arc call-conduit -- user.search |
+            jq -r '.response.data[].fields.username'
+    fi
 }
 
 show_and_prompt()
@@ -272,7 +274,9 @@ gitarc::stage()
             egrep -o 'D[1-9][0-9]*:' | tr -d ':')
         if [ -n "$diff" ]; then
             reviewers=$(diff2reviewers $diff | paste -sd ', ' - | sed 's/,/, /g')
-            printf "Reviewed by:\t${reviewers}\n" >> $tmp
+            if [ -n "$reviewers" ]; then
+                printf "Reviewed by:\t${reviewers}\n" >> $tmp
+            fi
             printf "Differential Revision:\thttps://reviews.freebsd.org/${diff}" >> $tmp
         fi
         git cherry-pick --no-commit $commit
