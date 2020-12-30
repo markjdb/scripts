@@ -225,7 +225,7 @@ gitarc::update()
     # The linter is stupid and applies patches to the working copy.
     # This would be tolerable if it didn't try to correct "misspelled" variable
     # names.
-    arc diff --update $diff HEAD~
+    arc diff --never-apply-patches --update $diff HEAD~
 
     restore_head $orig
 }
