@@ -329,6 +329,15 @@ SUBDIRECTORY_OK=y
 USAGE=
 . "$git_sh_setup"
 
+# Bail if the working tree is unclean, except for "patch" operations.
+case $verb in
+patch)
+    ;;
+*)
+    require_clean_work_tree $verb
+    ;;
+esac
+
 if eval $(git config --bool --default false --get arc.browse); then
     BROWSE=--browse
 fi
