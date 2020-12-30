@@ -15,7 +15,7 @@ err()
 err_usage()
 {
     cat >&2 <<__EOF__
-Usage: git arc [-y] <command> <arguments>
+Usage: git arc [-vy] <command> <arguments>
 
 Commands:
   create [-l] [-r <reviewer1>[,<reviewer2>...]] [-s subscriber[,...]] [<commit>|<commit range>]
@@ -42,6 +42,9 @@ Config Variables:
                        the list of git revisions to create reviews for is
                        listed with a single prompt before creating reviews.
                        The diffs for individual commits are not shown.
+
+  arc.verbose [bool]
+                    -- Verbose output.  Equivalent to the -v flag.
 
 Examples:
 
@@ -149,7 +152,7 @@ create_one_review()
                     "value": ["'${parentphid}'"]
                 }
              ]}' |
-            arc call-conduit -- differential.revision.edit
+            arc call-conduit -- differential.revision.edit >&3
     fi
 }
 
@@ -365,8 +368,12 @@ if eval $(git config --bool --default false --get arc.assume-yes); then
     ASSUME_YES=1
 fi
 
-while getopts y o; do
+VERBOSE=
+while getopts vy o; do
     case "$o" in
+    v)
+        VERBOSE=1
+        ;;
     y)
         ASSUME_YES=1
         ;;
@@ -376,6 +383,12 @@ while getopts y o; do
     esac
     shift $((OPTIND-1))
 done
+
+if [ "$VERBOSE" ]; then
+    exec 3>&1
+else
+    exec 3> /dev/null
+fi
 
 case "$1" in
 create|patch|stage|update)
