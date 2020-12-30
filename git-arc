@@ -20,7 +20,7 @@ Usage: git arc [-vy] <command> <arguments>
 Commands:
   create [-l] [-r <reviewer1>[,<reviewer2>...]] [-s subscriber[,...]] [<commit>|<commit range>]
   patch <diff1> [<diff2> ...]
-  stage [<commit>|<commit range>]
+  stage [-b branch] [<commit>|<commit range>]
   update <commit>
 
 Description:
@@ -310,13 +310,30 @@ gitarc::patch()
 
 gitarc::stage()
 {
-    local commit commits diff orig reviewers tmp
+    local branch commit commits diff orig reviewers tmp
+
+    branch=main
+    while getopts b: o; do
+        case "$o" in
+        b)
+            branch="$OPTARG"
+            ;;
+        *)
+            err_usage
+            ;;
+        esac
+        shift $((OPTIND-1))
+    done
 
     commits=$(build_commit_list $@)
 
     orig=$(save_head)
 
-    git checkout -q main
+    if [ "$branch" = "main" ]; then
+        git checkout -q main
+    else
+        git checkout -q -b ${branch} main
+    fi
 
     tmp=$(mktemp)
     for commit in $commits; do
