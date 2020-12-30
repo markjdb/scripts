@@ -1,5 +1,11 @@
 #!/bin/sh
 
+# TODO:
+# - roll back after errors or SIGINT
+#   - current checkout
+#   - created revs
+#   - main (for git arc stage)
+
 err()
 {
     echo "$(basename $0): $1" >&2
@@ -14,6 +20,7 @@ Usage: git arc <command> <arguments>
 Commands:
   create [-r <reviewer1>[,<reviewer2>...]] [<commit>|<commit range>]
   patch <diff1> [<diff2> ...]
+  stage [<commit>|<commit range>]
   update <commit>
 
 Description:
@@ -133,6 +140,27 @@ create_one_review()
     fi
 }
 
+# Get a list of reviewers who accepted the specified diff.
+diff2reviewers()
+{
+    local diff phid reviewid userids
+
+    diff=$1
+    reviewid=$(diff2phid $diff)
+    userids=$( \
+        echo '{
+                  "constraints": {"phids": ["'$reviewid'"]},
+                  "attachments": {"reviewers": true}
+              }' |
+        arc call-conduit -- differential.revision.search |
+        jq '.response.data[0].attachments.reviewers.reviewers[] | select(.status == "accepted").reviewerPHID')
+    echo '{
+              "constraints": {"phids": ['$(echo -n $userids | tr '[:space:]' ',')']}
+          }' |
+        arc call-conduit -- user.search |
+        jq -r '.response.data[].fields.username'
+}
+
 show_and_prompt()
 {
     local commit
@@ -219,6 +247,41 @@ gitarc::patch()
     done
 }
 
+gitarc::stage()
+{
+    local _commits commit commits diff orig reviewers tmp
+
+    # Convert each commit or commit range into a list of hashes.
+    for chash in $@; do
+        _commits=$(git rev-parse "${chash}")
+        if ! git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
+            _commits=$(git rev-list $_commits | tail -r)
+        fi
+        [ -n "$_commits" ] || err "invalid commit ID ${chash}"
+        commits="$commits $_commits"
+    done
+
+    orig=$(save_head)
+
+    git checkout -q main
+
+    tmp=$(mktemp)
+    for commit in $commits; do
+        git show -s --format=%B $commit > $tmp
+        diff=$(arc list | fgrep "$(git show -s --format=%s $commit)" |
+            egrep -o 'D[1-9][0-9]*:' | tr -d ':')
+        if [ -n "$diff" ]; then
+            reviewers=$(diff2reviewers $diff | paste -sd ', ' - | sed 's/,/, /g')
+            printf "Reviewed by:\t${reviewers}\n" >> $tmp
+            printf "Differential Revision:\thttps://reviews.freebsd.org/${diff}" >> $tmp
+        fi
+        git cherry-pick --no-commit $commit
+        git commit --edit --file $tmp
+    done
+
+    restore_head $orig
+}
+
 gitarc::update()
 {
     local commit diff orig
@@ -246,7 +309,7 @@ set -e
 [ $# -ge 1 ] || err_usage
 
 case "$1" in
-create|patch|update)
+create|patch|stage|update)
     ;;
 *)
     err_usage
