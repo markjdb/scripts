@@ -178,18 +178,17 @@ gitarc::create()
     orig=$(save_head)
     prev=""
     for chash in $@; do
+        # Convert each commit or commit range into a list of hashes.
         if git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
-            commit=$(git rev-parse "${chash}")
-            create_one_review "$commit" "$reviewers" "$prev"
-            prev=$(commit2diff "$commit")
+            commits=$(git rev-parse "${chash}")
         else
             commits=$(git rev-list $(git rev-parse "${chash}") | tail -r)
             [ -n "$commits" ] || err "invalid commit ID ${chash}"
-            for commit in ${commits}; do
-                create_one_review "$commit" "$reviewers" "$prev"
-                prev=$(commit2diff "$commit")
-            done
         fi
+        for commit in ${commits}; do
+            create_one_review "$commit" "$reviewers" "$prev"
+            prev=$(commit2diff "$commit")
+        done
     done
     restore_head $orig
 }
