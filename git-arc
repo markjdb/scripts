@@ -18,7 +18,7 @@ err_usage()
 Usage: git arc <command> <arguments>
 
 Commands:
-  create [-r <reviewer1>[,<reviewer2>...]] [-s subscriber[,...]] [<commit>|<commit range>]
+  create [-l] [-r <reviewer1>[,<reviewer2>...]] [-s subscriber[,...]] [<commit>|<commit range>]
   patch <diff1> [<diff2> ...]
   stage [<commit>|<commit range>]
   update <commit>
@@ -33,6 +33,11 @@ Description:
 Config Variables:
   arc.browse [bool] -- Try to open newly created reviews in a browser tab.
                        Defaults to false.
+
+  arc.list [bool]   -- Always use "list mode" (-l) with create.  In this mode,
+                       the list of git revisions to create reviews for is
+                       listed with a single prompt before creating reviews.
+                       The diffs for individual commits are not shown.
 
 Examples:
 
@@ -96,14 +101,16 @@ commit2diff()
 
 create_one_review()
 {
-    local childphid commit dir msg parent parentphid reviewers subscribers
+    local childphid commit dir doprompt msg parent parentphid reviewers
+    local subscribers
 
     commit=$1
     reviewers=$2
     subscribers=$3
     parent=$4
+    doprompt=$5
 
-    if ! show_and_prompt $commit; then
+    if [ "$doprompt" ] && ! show_and_prompt $commit; then
         return
     fi
 
@@ -165,13 +172,10 @@ diff2reviewers()
     fi
 }
 
-show_and_prompt()
+prompt()
 {
-    local commit
+    local resp
 
-    commit=$1
-
-    git show $commit
     printf "\nDoes this look OK? [y/N] "
     read resp
 
@@ -183,6 +187,16 @@ show_and_prompt()
         return 1
         ;;
     esac
+}
+
+show_and_prompt()
+{
+    local commit
+
+    commit=$1
+
+    git show $commit
+    prompt
 }
 
 save_head()
@@ -203,12 +217,36 @@ restore_head()
     git checkout -q $orig
 }
 
+build_commit_list()
+{
+    local chash _commits commits
+
+    for chash in $@; do
+        _commits=$(git rev-parse "${chash}")
+        if ! git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
+            _commits=$(git rev-list $_commits | tail -r)
+        fi
+        [ -n "$_commits" ] || err "invalid commit ID ${chash}"
+        commits="$commits $_commits"
+    done
+    echo $commits
+}
+
 gitarc::create()
 {
-    local commit commits orig prev reviewers subscribers
+    local commit commits doprompt list orig prev reviewers
+    local subscribers
 
-    while getopts r:s: o; do
+    list=
+    if eval $(git config --bool --default false --get arc.list); then
+        list=1
+    fi
+    doprompt=1
+    while getopts lr:s: o; do
         case "$o" in
+        l)
+            list=1
+            ;;
         r)
             reviewers="$OPTARG"
             ;;
@@ -222,19 +260,24 @@ gitarc::create()
         shift $((OPTIND-1))
     done
 
+    commits=$(build_commit_list $@)
+
+    if [ "$list" ]; then
+        for commit in ${commits}; do
+            git --no-pager show --oneline --no-patch $commit
+        done | git_pager
+        if ! prompt; then
+            return
+        fi
+        doprompt=
+    fi
+
     orig=$(save_head)
     prev=""
-    for chash in $@; do
-        # Convert each commit or commit range into a list of hashes.
-        commits=$(git rev-parse "${chash}")
-        if ! git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
-            commits=$(git rev-list $commits | tail -r)
-            [ -n "$commits" ] || err "invalid commit ID ${chash}"
-        fi
-        for commit in ${commits}; do
-            create_one_review "$commit" "$reviewers" "$subscribers" "$prev"
-            prev=$(commit2diff "$commit")
-        done
+    for commit in ${commits}; do
+        create_one_review "$commit" "$reviewers" "$subscribers" "$prev" \
+                          "$doprompt"
+        prev=$(commit2diff "$commit")
     done
     restore_head $orig
 }
@@ -256,17 +299,9 @@ gitarc::patch()
 
 gitarc::stage()
 {
-    local _commits commit commits diff orig reviewers tmp
+    local commit commits diff orig reviewers tmp
 
-    # Convert each commit or commit range into a list of hashes.
-    for chash in $@; do
-        _commits=$(git rev-parse "${chash}")
-        if ! git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
-            _commits=$(git rev-list $_commits | tail -r)
-        fi
-        [ -n "$_commits" ] || err "invalid commit ID ${chash}"
-        commits="$commits $_commits"
-    done
+    commits=$(build_commit_list $@)
 
     orig=$(save_head)
 
