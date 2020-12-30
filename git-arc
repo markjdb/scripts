@@ -18,7 +18,7 @@ err_usage()
 Usage: git arc <command> <arguments>
 
 Commands:
-  create [-r <reviewer1>[,<reviewer2>...]] [<commit>|<commit range>]
+  create [-r <reviewer1>[,<reviewer2>...]] [-s subscriber[,...]] [<commit>|<commit range>]
   patch <diff1> [<diff2> ...]
   stage [<commit>|<commit range>]
   update <commit>
@@ -96,11 +96,12 @@ commit2diff()
 
 create_one_review()
 {
-    local childphid commit dir msg parent parentphid reviewers
+    local childphid commit dir msg parent parentphid reviewers subscribers
 
     commit=$1
     reviewers=$2
-    parent=$3
+    subscribers=$3
+    parent=$4
 
     if ! show_and_prompt $commit; then
         return
@@ -117,6 +118,7 @@ create_one_review()
     printf "\nReviewers:\n" >> $msg
     printf "${reviewers}\n" >> $msg
     printf "\nSubscribers:\n" >> $msg
+    printf "${subscribers}\n" >> $msg
 
     yes | env EDITOR=true \
         arc diff --never-apply-patches --create --allow-untracked $BROWSE HEAD~
@@ -203,12 +205,15 @@ restore_head()
 
 gitarc::create()
 {
-    local commit commits orig prev reviewers
+    local commit commits orig prev reviewers subscribers
 
-    while getopts r: o; do
+    while getopts r:s: o; do
         case "$o" in
         r)
             reviewers="$OPTARG"
+            ;;
+        s)
+            subscribers="$OPTARG"
             ;;
         *)
             err_usage
@@ -227,7 +232,7 @@ gitarc::create()
             [ -n "$commits" ] || err "invalid commit ID ${chash}"
         fi
         for commit in ${commits}; do
-            create_one_review "$commit" "$reviewers" "$prev"
+            create_one_review "$commit" "$reviewers" "$subscribers" "$prev"
             prev=$(commit2diff "$commit")
         done
     done
