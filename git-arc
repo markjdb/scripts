@@ -273,7 +273,7 @@ gitarc::stage()
         diff=$(arc list | fgrep "$(git show -s --format=%s $commit)" |
             egrep -o 'D[1-9][0-9]*:' | tr -d ':')
         if [ -n "$diff" ]; then
-            reviewers=$(diff2reviewers $diff | paste -sd ', ' - | sed 's/,/, /g')
+            reviewers=$(diff2reviewers $diff | sed '/^$/d' | paste -sd ',' - | sed 's/,/, /g')
             if [ -n "$reviewers" ]; then
                 printf "Reviewed by:\t${reviewers}\n" >> $tmp
             fi
