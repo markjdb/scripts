@@ -15,7 +15,7 @@ err()
 err_usage()
 {
     cat >&2 <<__EOF__
-Usage: git arc <command> <arguments>
+Usage: git arc [-y] <command> <arguments>
 
 Commands:
   create [-l] [-r <reviewer1>[,<reviewer2>...]] [-s subscriber[,...]] [<commit>|<commit range>]
@@ -31,6 +31,10 @@ Description:
   is created using this script, that will happen automatically.
 
 Config Variables:
+  arc.assume_yes [bool]
+                    -- Assume a "yes" answer to all prompts instead of
+                       prompting the user.  Equivalent to the -y flag.
+
   arc.browse [bool] -- Try to open newly created reviews in a browser tab.
                        Defaults to false.
 
@@ -176,6 +180,10 @@ prompt()
 {
     local resp
 
+    if [ "$ASSUME_YES" ]; then
+        return 1
+    fi
+
     printf "\nDoes this look OK? [y/N] "
     read resp
 
@@ -234,7 +242,7 @@ build_commit_list()
 
 gitarc::create()
 {
-    local commit commits doprompt list orig prev reviewers
+    local commit commits doprompt list o orig prev reviewers
     local subscribers
 
     list=
@@ -351,6 +359,23 @@ gitarc::update()
 set -e
 
 [ $# -ge 1 ] || err_usage
+
+ASSUME_YES=
+if eval $(git config --bool --default false --get arc.assume-yes); then
+    ASSUME_YES=1
+fi
+
+while getopts y o; do
+    case "$o" in
+    y)
+        ASSUME_YES=1
+        ;;
+    *)
+        err_usage
+        ;;
+    esac
+    shift $((OPTIND-1))
+done
 
 case "$1" in
 create|patch|stage|update)
