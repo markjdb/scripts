@@ -23,6 +23,10 @@ Description:
   title must match the summary line of the corresponding commit.  If the review
   is created using this script, that will happen automatically.
 
+Config Variables:
+  arc.browse [bool] -- Try to open newly created reviews in a browser tab.
+                       Defaults to false.
+
 Examples:
 
   Create a Phabricator review using the contents of the most recent commit in
@@ -108,7 +112,7 @@ create_one_review()
     printf "\nSubscribers:\n" >> $msg
 
     yes | env EDITOR=true \
-        arc diff --never-apply-patches --create --allow-untracked --browse HEAD~
+        arc diff --never-apply-patches --create --allow-untracked $BROWSE HEAD~
     [ $? -eq 0 ] || err "could not create Phabricator diff"
 
     if [ -n "$parent" ]; then
@@ -257,5 +261,9 @@ git_sh_setup=$(git --exec-path)/git-sh-setup
 SUBDIRECTORY_OK=y
 USAGE=
 . "$git_sh_setup"
+
+if eval $(git config --bool --default false --get arc.browse); then
+    BROWSE=--browse
+fi
 
 gitarc::${verb} $@
