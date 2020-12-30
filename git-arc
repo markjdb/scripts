@@ -62,7 +62,8 @@ diff2phid()
         err "invalid diff ID $diff"
     fi
 
-    echo '{"names":["'$diff'"]}' | arc call-conduit -- phid.lookup | \
+    echo '{"names":["'$diff'"]}' |
+        arc call-conduit -- phid.lookup |
         jq -r "select(.response != []) | .response.${diff}.phid"
 }
 
@@ -116,7 +117,14 @@ create_one_review()
 
         childphid=$(diff2phid $diff)
         parentphid=$(diff2phid $parent)
-        echo '{"objectIdentifier": "'${childphid}'", "transactions": [{"type": "parents.add", "value": ["'${parentphid}'"]}]}' | \
+        echo '{
+            "objectIdentifier": "'${childphid}'",
+            "transactions": [
+                {
+                    "type": "parents.add",
+                    "value": ["'${parentphid}'"]
+                }
+             ]}' |
             arc call-conduit -- differential.revision.edit
     fi
 }
@@ -179,10 +187,9 @@ gitarc::create()
     prev=""
     for chash in $@; do
         # Convert each commit or commit range into a list of hashes.
-        if git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
-            commits=$(git rev-parse "${chash}")
-        else
-            commits=$(git rev-list $(git rev-parse "${chash}") | tail -r)
+        commits=$(git rev-parse "${chash}")
+        if ! git cat-file -e "${chash}"'^{commit}' >/dev/null 2>&1; then
+            commits=$(git rev-list $commits | tail -r)
             [ -n "$commits" ] || err "invalid commit ID ${chash}"
         fi
         for commit in ${commits}; do
