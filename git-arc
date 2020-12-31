@@ -118,7 +118,7 @@ create_one_review()
     doprompt=$5
 
     if [ "$doprompt" ] && ! show_and_prompt $commit; then
-        return
+        return 1
     fi
 
     git checkout -q $commit
@@ -154,6 +154,7 @@ create_one_review()
              ]}' |
             arc call-conduit -- differential.revision.edit >&3
     fi
+    return 0
 }
 
 # Get a list of reviewers who accepted the specified diff.
@@ -286,9 +287,12 @@ gitarc::create()
     orig=$(save_head)
     prev=""
     for commit in ${commits}; do
-        create_one_review "$commit" "$reviewers" "$subscribers" "$prev" \
-                          "$doprompt"
-        prev=$(commit2diff "$commit")
+        if create_one_review "$commit" "$reviewers" "$subscribers" "$prev" \
+                             "$doprompt"; then
+            prev=$(commit2diff "$commit")
+        else
+            prev=""
+        fi
     done
     restore_head $orig
 }
