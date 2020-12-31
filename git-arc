@@ -269,8 +269,8 @@ gitarc::create()
             err_usage
             ;;
         esac
-        shift $((OPTIND-1))
     done
+    shift $((OPTIND-1))
 
     commits=$(build_commit_list $@)
 
@@ -326,8 +326,8 @@ gitarc::stage()
             err_usage
             ;;
         esac
-        shift $((OPTIND-1))
     done
+    shift $((OPTIND-1))
 
     commits=$(build_commit_list $@)
 
@@ -382,8 +382,6 @@ gitarc::update()
 
 set -e
 
-[ $# -ge 1 ] || err_usage
-
 ASSUME_YES=
 if eval $(git config --bool --default false --get arc.assume-yes); then
     ASSUME_YES=1
@@ -402,8 +400,10 @@ while getopts vy o; do
         err_usage
         ;;
     esac
-    shift $((OPTIND-1))
 done
+shift $((OPTIND-1))
+
+[ $# -ge 1 ] || err_usage
 
 if [ "$VERBOSE" ]; then
     exec 3>&1
