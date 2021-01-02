@@ -96,11 +96,53 @@ diff2phid()
         jq -r "select(.response != []) | .response.${diff}.phid"
 }
 
+diff2status()
+{
+    local diff tmp status summary
+
+    diff=$1
+    if ! expr "$diff" : 'D[1-9][0-9]*$' >/dev/null; then
+        err "invalid diff ID $diff"
+    fi
+
+    tmp=$(mktemp)
+    echo '{"names":["'$diff'"]}' |
+        arc call-conduit -- phid.lookup > $tmp
+    status=$(jq -r "select(.response != []) | .response.${diff}.status" < $tmp)
+    summary=$(jq -r "select(.response != []) |
+         .response.${diff}.fullName" < $tmp)
+    printf "%-14s %s\n" "${status}" "${summary}"
+}
+
+log2diff()
+{
+    local diff
+
+    diff=$(git show -s --format=%B $commit |
+        sed -nE '/^Differential Revision:[[:space:]]+(https:\/\/reviews.freebsd.org\/)?(D[0-9]+)$/{s//\2/;p;}')
+    if [ -n "$diff" ] && [ $(echo "$diff" | wc -l) -eq 1 ]; then
+        echo $diff
+    else
+        echo
+    fi
+}
+
 commit2diff()
 {
     local commit diff title
 
     commit=$1
+
+    # First, look for a valid differential reference in the commit
+    # log.
+    diff=$(log2diff $commit)
+    if [ -n "$diff" ]; then
+        echo $diff
+        return
+    fi
+
+    # Second, search the open reviews returned by 'arc list' looking
+    # for a subject match.
     title=$(git show -s --format=%s $commit)
     diff=$(arc list | fgrep "$title" | egrep -o 'D[1-9][0-9]*:' | tr -d ':')
     if [ -z "$diff" ]; then
@@ -310,13 +352,20 @@ gitarc::list()
     commits=$(build_commit_list $@)
 
     for commit in $commits; do
+        chash=$(git show -s --format='%C(auto)%h' $commit)
+        echo -n "${chash} "
+
+        diff=$(log2diff $commit)
+        if [ -n "$diff" ]; then
+                diff2status $diff
+                continue
+        fi
+
         # This does not use commit2diff as it needs to handle errors
         # differently and keep the entire status.  The extra 'cat'
         # after 'fgrep' avoids erroring due to -e.
         title=$(git show -s --format=%s $commit)
         diff=$(arc list | fgrep "$title" | cat)
-        chash=$(git show -s --format='%h' $commit)
-        echo -n "${chash} "
         if [ -z "$diff" ]; then
             echo "No Review      : $title"
         elif [ $(echo "$diff" | wc -l) -ne 1 ]; then
