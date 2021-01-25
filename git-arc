@@ -42,9 +42,9 @@ err()
 err_usage()
 {
     cat >&2 <<__EOF__
-Usage: git arc [-vy] <command> <arguments>
+Usage: git arc [-vy] <verb> <arguments>
 
-Commands:
+Verbs:
   create [-l] [-r <reviewer1>[,<reviewer2>...]] [-s subscriber[,...]] [<commit>|<commit range>]
   list <commit>|<commit range>
   patch <diff1> [<diff2> ...]
@@ -52,30 +52,59 @@ Commands:
   update <commit>
 
 Description:
-  Create or update a FreeBSD Phabricator review, or apply a patch from an
-  existing review to a local git checkout.  There is a one-to-one relationship
-  between git commits and Differential revisions, and the Differential review
-  title must match the summary line of the corresponding commit.  If the review
-  is created using this script, that will happen automatically.
+  Create or manage FreeBSD Phabricator reviews based on git commits.  There
+  is a one-to one relationship between git commits and Differential revisions,
+  and the Differential revision title must match the summary line of the
+  corresponding commit.  In particular, commit summaries must be unique across
+  all open Differential revisions authored by you.
+
+  The first parameter must be a verb.  The available verbs are:
+
+    create -- Create new Differential revisions from the specified commits.
+    list   -- Print the associated Differential revisions for the specified
+              commits.
+    patch  -- Try to apply a patch from a Differential revision to the
+              currently checked out tree.
+    stage  -- Prepare a series of commits to be pushed to the upstream FreeBSD
+              repository.  The commits are cherry-picked to a branch (main by
+              default), review tags are added to the commit log message, and
+              the log message is opened in an editor for any last-minute
+              updates.  The commits need not have associated Differential
+              revisions.
+    update -- Synchronize the Differential revisions associated with the
+              specified commits.  Currently only the diff is updated; the
+              review description and other metadata is not synchronized.
+
+  The typical end-to-end usage looks something like this:
+
+    $ git commit -m "kern: Rewrite in Rust"
+    $ git arc create HEAD
+    <Make changes to the diff based on reviewer feedback.>
+    $ git commit --amend
+    $ git arc update HEAD
+    <Now that all reviewers are happy, it's time to push.>
+    $ git arc stage HEAD
+    $ git push upstream HEAD:main
 
 Config Variables:
-  arc.assume_yes [bool]
-                    -- Assume a "yes" answer to all prompts instead of
-                       prompting the user.  Equivalent to the -y flag.
+  These are manipulated by git-config(1).
 
-  arc.browse [bool] -- Try to open newly created reviews in a browser tab.
-                       Defaults to false.
+    arc.assume_yes [bool]
+                       -- Assume a "yes" answer to all prompts instead of
+                          prompting the user.  Equivalent to the -y flag.
 
-  arc.list [bool]   -- Always use "list mode" (-l) with create.  In this mode,
-                       the list of git revisions to create reviews for is
-                       listed with a single prompt before creating reviews.
-                       The diffs for individual commits are not shown.
+    arc.browse [bool]  -- Try to open newly created reviews in a browser tab.
+                          Defaults to false.
 
-  arc.verbose [bool]
-                    -- Verbose output.  Equivalent to the -v flag.
+    arc.list [bool]    -- Always use "list mode" (-l) with create.  In this
+                          mode, the list of git revisions to create reviews for
+                          is listed with a single prompt before creating
+                          reviews.  The diffs for individual commits are not
+                          shown.
+
+    arc.verbose [bool] -- Verbose output.  Equivalent to the -v flag.
 
 Examples:
-
   Create a Phabricator review using the contents of the most recent commit in
   your git checkout.  The commit title is used as the review title, the commit
   log message is used as the review description, markj@FreeBSD.org is added as
