@@ -33,9 +33,14 @@
 #   - created revs
 #   - main (for git arc stage)
 
-err()
+warn()
 {
     echo "$(basename $0): $1" >&2
+}
+
+err()
+{
+    warn "$1"
     exit 1
 }
 
@@ -451,7 +456,7 @@ gitarc::patch()
 
 gitarc::stage()
 {
-    local branch commit commits diff orig reviewers tmp
+    local branch commit commits diff reviewers tmp
 
     branch=main
     while getopts b: o; do
@@ -468,8 +473,6 @@ gitarc::stage()
 
     commits=$(build_commit_list $@)
 
-    orig=$(save_head)
-
     if [ "$branch" = "main" ]; then
         git checkout -q main
     else
@@ -482,17 +485,20 @@ gitarc::stage()
         diff=$(arc list | fgrep "$(git show -s --format=%s $commit)" |
             egrep -o 'D[1-9][0-9]*:' | tr -d ':')
         if [ -n "$diff" ]; then
+            # XXX this leaves an extra newline in some cases.
             reviewers=$(diff2reviewers $diff | sed '/^$/d' | paste -sd ',' - | sed 's/,/, /g')
             if [ -n "$reviewers" ]; then
                 printf "Reviewed by:\t${reviewers}\n" >> $tmp
             fi
             printf "Differential Revision:\thttps://reviews.freebsd.org/${diff}" >> $tmp
         fi
-        git cherry-pick --no-commit $commit
+        if ! git cherry-pick --no-commit ${commit}; then
+            warn "Failed to apply $(git rev-parse --short ${commit}).  Are you staging patches in the wrong order?"
+            git checkout -f
+            break
+        fi
         git commit --edit --file $tmp
     done
-
-    restore_head $orig
 }
 
 gitarc::update()
