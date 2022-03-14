@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+while [ $# -gt 0 ]; do
+    commit=$1
+    shift
+
+    summary="$(git log -n 1 --format="%h (\"%s\")" $commit)"
+    echo $summary
+    if which xclip >/dev/null; then
+        echo $summary | xclip
+    fi
+done
