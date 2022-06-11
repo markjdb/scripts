@@ -1,5 +1,7 @@
 # Helpers.
 
+import gdb
+
 def has_feature(name):
     return gdb.lookup_symbol('sysctl___kern_features_' + name)[0] is not None
 
