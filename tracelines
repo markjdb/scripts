@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]; then
+    echo "usage: $(basename $0) <function name>" >&2
+    exit 1
+fi
+
+func=$1
+
+# XXX-MJ only works on amd64
+# XXX-MJ doesn't work with kernel modules
+# XXX-MJ doesn't handle function globs
+dtrace -q -n 'kinst::'"${func}"': {printf("0x%x\n", regs[R_RIP]);}' | \
+    addr2line -e /usr/lib/debug/boot/kernel/kernel.debug
