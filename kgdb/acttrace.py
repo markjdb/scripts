@@ -28,8 +28,7 @@ class acttrace(gdb.Command):
         # Save the currently selected thread.
         curthread = gdb.selected_thread()
 
-        # This works on most, but not all platforms.
-        pcpu = gdb.lookup_global_symbol("__pcpu").value()
+        pcpu = gdb.lookup_global_symbol("cpuid_to_pcpu").value()
         for cpu in cpu_foreach():
             td = pcpu[cpu]['pc_curthread']
             p = td['td_proc']
