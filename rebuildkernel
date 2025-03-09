@@ -1,0 +1,28 @@
+#!/bin/sh
+
+set -e
+
+FLAGS="WITHOUT_CLEAN="
+KERNCONF=$(uname -i)
+JFLAG=-j$(sysctl -n hw.ncpu)
+while [ $# -gt 0 ]; do
+	case $1 in
+	-a)
+		FLAGS=
+		;;
+	-c)
+		shift
+		KERNCONF=$1
+		;;
+	-j)
+		shift
+		JFLAG="-j$1"
+		;;
+	esac
+	shift
+done
+
+make $JFLAG -s buildkernel $FLAGS KERNCONF=$KERNCONF
+sudo -E make installkernel -s $JFLAG KERNCONF=$KERNCONF INSTKERNNAME=kernel.test
+sudo nextboot -k kernel.test
+sudo shutdown -r now
