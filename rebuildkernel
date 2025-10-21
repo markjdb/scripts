@@ -23,6 +23,6 @@ while [ $# -gt 0 ]; do
 done
 
 make $JFLAG -s buildkernel $FLAGS KERNCONF=$KERNCONF
-sudo -E make installkernel -s $JFLAG KERNCONF=$KERNCONF INSTKERNNAME=kernel.test
+sudo -E make installkernel -s $JFLAG KERNCONF=$KERNCONF INSTKERNNAME=kernel.test DESTDIR=/
 sudo nextboot -k kernel.test
 sudo shutdown -r now
